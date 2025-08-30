@@ -1,12 +1,13 @@
 
 import React, { useState } from "react";
 import "./App.css";
+import axios from "axios";
 
 export default function AdminLogin({ onBack, setPage }) {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    adminCode: ""
+    //adminCode: ""
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,7 +23,7 @@ export default function AdminLogin({ onBack, setPage }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          usernameOrEmail: form.email,
+          email: form.email,
           password: form.password
         })
       });

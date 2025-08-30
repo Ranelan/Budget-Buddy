@@ -21,6 +21,14 @@ function App() {
     const AdminLogin = require("./AdminLogin").default;
     return <AdminLogin onBack={() => setPage("adminSignup")} setPage={setPage} />;
   }
+    if (page === "regularUserSignup") {
+  const RegularUserSignUp = require("./RegularUserSignUp").default; 
+  return <RegularUserSignUp />;
+}
+  if (page == "regularUserLogin"){
+    const RegularUserLogin = require("./RegularUserLogin").default;
+    return <RegularUserLogin />;
+  }
 
   return (
     <div className="signup-bg">
@@ -30,8 +38,10 @@ function App() {
           <span className="signup-appname">Budget Buddy</span>
           <nav className="signup-nav">
             <span className="signup-nav-link" onClick={() => setPage("landing")}>Home</span>
-            <span className="signup-nav-link" onClick={() => setPage("adminSignup")}>Join</span>
-            <span className="signup-nav-link" onClick={() => setPage("adminLogin")}>Login</span>
+            <span className="signup-nav-link" onClick={() => setPage("adminSignup")}>Admin Sign Up</span>
+            <span className="signup-nav-link" onClick={() => setPage("adminLogin")}> Admin Login</span>
+            <span className="signup-nav-link" onClick={() => setPage("regularUserSignup")}>Sign Up</span>
+            <span className="signup-nav-link" onClick={() => setPage("regularUserLogin")}>Login</span>
           </nav>
         </div>
         <div className="signup-content">
