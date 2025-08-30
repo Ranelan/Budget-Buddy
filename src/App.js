@@ -21,6 +21,14 @@ function App() {
     const AdminLogin = require("./AdminLogin").default;
     return <AdminLogin onBack={() => setPage("adminSignup")} setPage={setPage} />;
   }
+  if (page === "userLogin") {
+    const UserLogin = require("./UserLogin").default;
+    return <UserLogin onBack={() => setPage("userSignup")} setPage={setPage} />;
+  }
+  if (page === "userSignup") {
+    const UserSignup = require("./UserSignup").default;
+    return <UserSignup onBack={() => setPage("userLogin")} setPage={setPage} />;
+  }
 
   return (
     <div className="signup-bg">
@@ -44,6 +52,8 @@ function App() {
             <div className="signup-btn-row">
               <button className="signup-btn signup-btn-blue" onClick={() => setPage("adminLogin")}>Admin Login</button>
               <button className="signup-btn signup-btn-gray" onClick={() => setPage("adminSignup")}>Admin Sign Up</button>
+              <button className="signup-btn signup-btn-blue" onClick={() => setPage("userLogin")}>User Login</button>
+              <button className="signup-btn signup-btn-gray" onClick={() => setPage("userSignup")}>User Sign Up</button>
             </div>
           </div>
           <div className="signup-side-img">
