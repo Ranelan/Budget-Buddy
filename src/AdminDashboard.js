@@ -47,7 +47,7 @@ function AdminSection() {
 
   React.useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8081/api/admin/all")
+    fetch("http://localhost:8081/api/admin/findAll")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -143,7 +143,7 @@ function CategoriesSection() {
 
   React.useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8081/api/admin/categories/all")
+    fetch("http://localhost:8081/api/category/findAll")
       .then(res => res.json())
       .then(data => { setCategories(data); setLoading(false); })
       .catch(err => { setError("Failed to fetch categories"); setLoading(false); });
