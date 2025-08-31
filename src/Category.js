@@ -15,9 +15,7 @@ function Category({ role = 'user' }) {
   const [isEditing, setIsEditing] = useState(false);
   const [newCategory, setNewCategory] = useState({ 
     name: '', 
-    type: 'Expense', 
-    isGlobal: role === 'admin',
-    userId: null 
+    type: 'Expense'
   });
   const [errors, setErrors] = useState({});
   const [showReassignDialog, setShowReassignDialog] = useState(false);
@@ -66,8 +64,8 @@ function Category({ role = 'user' }) {
 
     if (filterUser !== 'all') {
       filtered = filtered.filter(cat => 
-        filterUser === 'system' ? cat.isGlobal : 
-        filterUser === 'user' ? !cat.isGlobal : 
+        filterUser === 'system' ? (cat.isGlobal || false) : 
+        filterUser === 'user' ? !(cat.isGlobal || false) : 
         cat.userId === parseInt(filterUser)
       );
     }
@@ -87,10 +85,10 @@ function Category({ role = 'user' }) {
   const handleSearch = (e) => setSearchTerm(e.target.value);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setNewCategory({ 
       ...newCategory, 
-      [name]: type === 'checkbox' ? checked : value 
+      [name]: value 
     });
     if (errors[name]) setErrors({ ...errors, [name]: '' });
   };
@@ -99,7 +97,6 @@ function Category({ role = 'user' }) {
     const newErrors = {};
     if (!newCategory.name.trim()) newErrors.name = 'Name is required';
     if (!newCategory.type) newErrors.type = 'Type is required';
-    if (!newCategory.isGlobal && !newCategory.userId) newErrors.userId = 'User required for personal category';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -110,17 +107,46 @@ function Category({ role = 'user' }) {
     const method = isEditing ? 'PUT' : 'POST';
     const endpoint = isEditing ? `${BASE_URL}/update` : `${BASE_URL}/create`;
 
+    // Only send fields that your Spring Boot Category entity actually has
+    const payload = {
+      name: newCategory.name,
+      type: newCategory.type
+    };
+
+    console.log('Sending payload:', payload);
+
     fetch(endpoint, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCategory)
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
     })
-      .then(res => res.ok ? res.json() : Promise.reject('Save failed'))
-      .then(saved => {
+    .then(async (response) => {
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
+      }
+      
+      try {
+        const savedData = JSON.parse(responseText);
+        console.log('Saved successfully:', savedData);
+        alert('Category saved successfully!');
         fetchCategories();
         resetForm();
-      })
-      .catch(err => console.error(err));
+        return savedData;
+      } catch (e) {
+        throw new Error('Invalid JSON response: ' + responseText);
+      }
+    })
+    .catch(error => {
+      console.error('Save error:', error);
+      alert('Error saving category: ' + error.message);
+    });
   };
 
   // Delete category for users
@@ -141,17 +167,8 @@ function Category({ role = 'user' }) {
 
   // Admin delete with reassignment option
   const confirmDelete = (category) => {
-    fetch(`${BASE_URL}/transactionCount/${category.categoryId}`)
-      .then(res => res.json())
-      .then(count => {
-        if (count > 0) {
-          setCategoryToDelete({...category, transactionCount: count});
-          setShowReassignDialog(true);
-        } else {
-          proceedWithDelete(category.categoryId);
-        }
-      })
-      .catch(() => proceedWithDelete(category.categoryId));
+    // For now, just proceed with delete since we don't have transactionCount endpoint
+    proceedWithDelete(category.categoryId);
   };
 
   const proceedWithDelete = (id, reassignToId = null) => {
@@ -169,9 +186,7 @@ function Category({ role = 'user' }) {
     })
       .then(res => {
         if (!res.ok) throw new Error('Delete failed');
-        alert(reassignToId ? 
-          'Category deleted successfully. Transactions reassigned.' : 
-          'Category deleted successfully.');
+        alert('Category deleted successfully.');
         fetchCategories();
         setShowReassignDialog(false);
         setCategoryToDelete(null);
@@ -189,16 +204,14 @@ function Category({ role = 'user' }) {
     setIsEditing(true);
     setNewCategory({
       name: category.name,
-      type: category.type,
-      isGlobal: category.isGlobal,
-      userId: category.userId || null
+      type: category.type
     });
     setShowForm(true);
   };
 
   const resetForm = () => {
     setIsEditing(false);
-    setNewCategory({ name: '', type: 'Expense', isGlobal: isAdmin, userId: null });
+    setNewCategory({ name: '', type: 'Expense' });
     setErrors({});
     setShowForm(false);
   };
@@ -278,10 +291,10 @@ function Category({ role = 'user' }) {
           <tbody>
             {filteredCategories.length > 0 ? (
               filteredCategories.map(cat => (
-                <tr key={cat.categoryId} className={cat.isGlobal ? 'system-category' : 'user-category'}>
+                <tr key={cat.categoryId} className={(cat.isGlobal || false) ? 'system-category' : 'user-category'}>
                   <td>
                     {cat.name}
-                    {isAdmin && cat.isGlobal && <span className="badge-global">System</span>}
+                    {isAdmin && (cat.isGlobal || false) && <span className="badge-global">System</span>}
                   </td>
                   <td>
                     <span className={`type-badge ${cat.type.toLowerCase()}`}>
@@ -290,7 +303,7 @@ function Category({ role = 'user' }) {
                   </td>
                   {isAdmin && (
                     <td>
-                      {cat.isGlobal ? 'System' : 
+                      {(cat.isGlobal || false) ? 'System' : 
                        users.find(u => u.userID === cat.userId)?.userName || 'Unknown User'}
                     </td>
                   )}
@@ -332,6 +345,7 @@ function Category({ role = 'user' }) {
                 value={newCategory.name}
                 onChange={handleInputChange}
                 className={errors.name ? 'error' : ''}
+                placeholder="Enter category name"
               />
               {errors.name && <span className="error-text">{errors.name}</span>}
             </div>
@@ -350,42 +364,6 @@ function Category({ role = 'user' }) {
               {errors.type && <span className="error-text">{errors.type}</span>}
             </div>
 
-            {isAdmin && (
-              <>
-                <div className="form-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="isGlobal"
-                      checked={newCategory.isGlobal}
-                      onChange={handleInputChange}
-                    />
-                    System Category
-                  </label>
-                </div>
-
-                {!newCategory.isGlobal && (
-                  <div className="form-group">
-                    <label>User:</label>
-                    <select
-                      name="userId"
-                      value={newCategory.userId || ''}
-                      onChange={handleInputChange}
-                      className={errors.userId ? 'error' : ''}
-                    >
-                      <option value="">Select User</option>
-                      {users.map(user => (
-                        <option key={user.userID} value={user.userID}>
-                          {user.userName}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.userId && <span className="error-text">{errors.userId}</span>}
-                  </div>
-                )}
-              </>
-            )}
-
             <div className="form-actions">
               <button className="btn-secondary" onClick={resetForm}>
                 Cancel
@@ -403,8 +381,8 @@ function Category({ role = 'user' }) {
           <div className="reassign-dialog">
             <h3>⚠️ Category Has Transactions</h3>
             <p>
-              The category "<strong>{categoryToDelete.name}</strong>" has {categoryToDelete.transactionCount} 
-              transactions assigned. Please choose what to do with them:
+              The category "<strong>{categoryToDelete.name}</strong>" has transactions assigned. 
+              Please choose what to do with them:
             </p>
             
             <div className="form-group">
@@ -423,7 +401,7 @@ function Category({ role = 'user' }) {
                     )
                     .map(cat => (
                       <option key={cat.categoryId} value={cat.categoryId}>
-                        {cat.name} {cat.isGlobal && "(System)"}
+                        {cat.name} {(cat.isGlobal || false) && "(System)"}
                       </option>
                     ))}
                 </optgroup>
