@@ -28,7 +28,16 @@ function RegularUserLogin() {
         password: formData.password
       });
       setMessage("User Login successful!");
-      console.log("Login:", response.data);
+      // Store user info for dashboard greeting
+      if (response.data && response.data.userName) {
+        localStorage.setItem("regularUserName", response.data.userName);
+      } else {
+        localStorage.setItem("regularUserName", formData.email);
+      }
+      // Store userID for profile
+      if (response.data && response.data.userID) {
+        localStorage.setItem("regularUserId", response.data.userID);
+      }
       setTimeout(() => {
         navigate('/user-dashboard');
       }, 800);
