@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
+import Category from "./Category";
 
 const sections = [
   { key: "admin", label: "Admin Management" },
@@ -47,7 +48,7 @@ function AdminSection() {
 
   React.useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8081/api/admin/all")
+    fetch("http://localhost:8081/api/admin/findAll")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -137,30 +138,11 @@ function UsersSection() {
 }
 
 function CategoriesSection() {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  React.useEffect(() => {
-    setLoading(true);
-    fetch("http://localhost:8081/api/admin/categories/all")
-      .then(res => res.json())
-      .then(data => { setCategories(data); setLoading(false); })
-      .catch(err => { setError("Failed to fetch categories"); setLoading(false); });
-  }, []);
-
   return (
     <div className="dashboard-content">
-      <h2>Categories</h2>
-      {loading ? <div>Loading...</div> : null}
-      {error ? <div style={{color:'red'}}>{error}</div> : null}
-      <ul>
-        {categories.map(cat => (
-          <li key={cat.id}>{cat.name}</li>
-        ))}
-      </ul>
+      <Category role="admin" />
     </div>
-  );
+  )
 }
 
 function AnalyticsSection() {
