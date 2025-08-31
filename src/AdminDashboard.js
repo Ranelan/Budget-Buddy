@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import "./App.css";
 import Category from "./Category";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,ResponsiveContainer, } from "recharts";
 
 const sections = [
   { key: "admin", label: "Admin Management" },
@@ -150,22 +151,59 @@ function AnalyticsSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLoading(true);
     fetch("http://localhost:8081/api/admin/analytics")
-      .then(res => res.json())
-      .then(data => { setAnalytics(data); setLoading(false); })
-      .catch(err => { setError("Failed to fetch analytics"); setLoading(false); });
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch analytics");
+        return res.json();
+      })
+      .then((data) => {
+        setAnalytics(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to fetch analytics");
+        setLoading(false);
+      });
   }, []);
+
+  if (loading) return <div className="text-gray-500">Loading analytics...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (!analytics) return <div>No analytics data available.</div>;
+
+  const categoryData = Object.entries(analytics.transactionsByCategory || {}).map(
+    ([name, count]) => ({ name, count })
+  );
+
+  const typeData = Object.entries(analytics.transactionsByType || {}).map(
+    ([type, count]) => ({ type, count })
+  );
+
+  const renderBarChart = (data, xKey, title, color) => (
+    <div className="bg-white p-4 rounded-2xl shadow-md mb-6">
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={data}
+          margin={{ top: 20, right: 20, left: 0, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xKey} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="count" fill={color} radius={[6, 6, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 
   return (
     <div className="dashboard-content">
-      <h2>Analytics</h2>
-      {loading ? <div>Loading...</div> : null}
-      {error ? <div style={{color:'red'}}>{error}</div> : null}
-      {analytics ? (
-        <pre style={{background:'#222',color:'#fff',padding:'1em',borderRadius:'8px'}}>{JSON.stringify(analytics,null,2)}</pre>
-      ) : null}
+      <h2 className="text-2xl font-bold mb-6">Analytics Overview</h2>
+      {renderBarChart(categoryData, "name", "Transactions by Category", "#6366F1")}
+      {renderBarChart(typeData, "type", "Transactions by Type", "#10B981")}
     </div>
   );
 }
