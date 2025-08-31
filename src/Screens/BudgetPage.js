@@ -4,33 +4,10 @@ const API_BASE = "http://localhost:8081/api/budget";
 
 export default function BudgetPage() {
   // Search handler for unified search bar
-  const handleSearch = (query) => {
-    query = query.trim();
-    if (!query) return;
-    // Try month
-    fetch(`${API_BASE}/findByMonth/${query}`)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => {
-        if (data && data.length) return setBudgets(data);
-        // Try year
-        fetch(`${API_BASE}/findByYear/${query}`)
-          .then(res => res.ok ? res.json() : [])
-          .then(data2 => {
-            if (data2 && data2.length) return setBudgets(data2);
-            // Try limit amount
-            fetch(`${API_BASE}/findByLimitAmountGreaterThan/${query}`)
-              .then(res => res.ok ? res.json() : [])
-              .then(data3 => {
-                setBudgets(data3);
-              });
-          });
-      });
-  };
   const [budgets, setBudgets] = useState([]);
   const [form, setForm] = useState({ month: "", year: "", limitAmount: "" });
   const [selectedId, setSelectedId] = useState("");
   const [message, setMessage] = useState("");
-  const [search, setSearch] = useState("");
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({ month: "", year: "", limitAmount: "" });
 
