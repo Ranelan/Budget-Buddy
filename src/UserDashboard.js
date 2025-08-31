@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import BudgetPage from "./BudgetPage";
-import "../App.css";
+import "./App.css";
 
 export default function UserDashboard() {
   const [showBudget, setShowBudget] = useState(false);

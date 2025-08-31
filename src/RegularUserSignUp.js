@@ -41,44 +41,59 @@ function RegularUserSignUp() {
     <div className="signup-bg">
       <div className="signup-container">
         <div className="signup-header">
-          <span className="signup-appdot"></span>
-          <span className="signup-appname">BudgetBuddy</span>
+          <span className="signup-appdot" />
+          <span className="signup-appname">Budget Buddy</span>
         </div>
         <div className="signup-content">
-          <form className="signup-form" onSubmit={handleSubmit}>
-            <input
-              name="username"
-              className="signup-input"
-              type="text"
-              placeholder="Username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-            />
-            <input
-              name="email"
-              className="signup-input"
-              type="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-            <input
-              name="password"
-              className="signup-input signup-input-password"
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-            <div className="signup-btn-row">
-              <button type="submit" className="signup-btn signup-btn-blue">Sign Up</button>
-              <button type="button" className="signup-btn signup-btn-gray" onClick={() => setFormData({ username: "", email: "", password: "" })}>Cancel</button>
+          <div className="signup-form-section">
+            <div className="signup-title-group">
+              <span className="signup-subtitle">USER SIGN UP</span>
+              <h1 className="signup-title">Create Account<span className="signup-title-dot">.</span></h1>
+              <span className="signup-login-link">Already have an account? <a href="/user-login" className="signup-link-btn">Login</a></span>
             </div>
-            {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
-          </form>
+            <form className="signup-form" onSubmit={handleSubmit}>
+              <input
+                name="username"
+                className="signup-input"
+                type="text"
+                placeholder="Username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+              />
+              <input
+                name="email"
+                className="signup-input"
+                type="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+              <input
+                name="password"
+                className="signup-input signup-input-password"
+                type="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+              <div className="signup-btn-row">
+                <button type="submit" className="signup-btn signup-btn-blue">Sign Up</button>
+              </div>
+              {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
+            </form>
+          </div>
+          <div className="signup-side-img">
+            <div className="signup-side-img-content">
+              <span className="signup-side-img-icon">💰</span>
+              <span className="signup-side-img-text">Smart budgeting helps you save, plan, and achieve your financial goals. Start tracking your expenses and take control today!</span>
+            </div>
+          </div>
+        </div>
+        <div className="signup-footer">
+          <span className="signup-footer-logo">BB</span>
         </div>
       </div>
     </div>

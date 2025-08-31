@@ -1,35 +1,15 @@
 
 import './App.css';
+import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import AdminDashboard from "./AdminDashboard";
+import AdminSignup from "./AdminSignup";
+import AdminLogin from "./AdminLogin";
+import RegularUserSignUp from "./RegularUserSignUp";
+import RegularUserLogin from "./RegularUserLogin";
+import UserDashboard from "./UserDashboard";
 
-
-
-import { useState } from "react";
-
-
-function App() {
-  const [page, setPage] = useState("landing");
-
-  if (page === "adminDashboard") {
-    const AdminDashboard = require("./AdminDashboard").default;
-    return <AdminDashboard />;
-  }
-  if (page === "adminSignup") {
-    const AdminSignup = require("./AdminSignup").default;
-    return <AdminSignup onBack={() => setPage("adminLogin")} setPage={setPage} />;
-  }
-  if (page === "adminLogin") {
-    const AdminLogin = require("./AdminLogin").default;
-    return <AdminLogin onBack={() => setPage("adminSignup")} setPage={setPage} />;
-  }
-    if (page === "regularUserSignup") {
-  const RegularUserSignUp = require("./RegularUserSignUp").default; 
-  return <RegularUserSignUp />;
-}
-  if (page == "regularUserLogin"){
-    const RegularUserLogin = require("./RegularUserLogin").default;
-    return <RegularUserLogin />;
-  }
-
+function Home() {
   return (
     <div className="signup-bg">
       <div className="signup-container">
@@ -37,11 +17,7 @@ function App() {
           <span className="signup-appdot" />
           <span className="signup-appname">Budget Buddy</span>
           <nav className="signup-nav">
-            <span className="signup-nav-link" onClick={() => setPage("landing")}>Home</span>
-            <span className="signup-nav-link" onClick={() => setPage("adminSignup")}>Admin Sign Up</span>
-            <span className="signup-nav-link" onClick={() => setPage("adminLogin")}> Admin Login</span>
-            <span className="signup-nav-link" onClick={() => setPage("regularUserSignup")}>Sign Up</span>
-            <span className="signup-nav-link" onClick={() => setPage("regularUserLogin")}>Login</span>
+            <Link className="signup-nav-link" to="/">Home</Link>
           </nav>
         </div>
         <div className="signup-content">
@@ -52,10 +28,12 @@ function App() {
               <span className="signup-login-link">Track your budget, manage expenses, and plan for your future—all in one place.</span>
             </div>
             <div className="signup-btn-row">
-              <button className="signup-btn signup-btn-blue" onClick={() => setPage("adminLogin")}>Admin Login</button>
-              <button className="signup-btn signup-btn-gray" onClick={() => setPage("adminSignup")}>Admin Sign Up</button>
-              <button className="signup-btn signup-btn-blue" onClick={() => setPage("userLogin")}>User Login</button>
-              <button className="signup-btn signup-btn-gray" onClick={() => setPage("userSignup")}>User Sign Up</button>
+              <Link to="/admin-login">
+                <button className="signup-btn signup-btn-blue enhanced-btn">Admin Login</button>
+              </Link>
+              <Link to="/user-login">
+                <button className="signup-btn signup-btn-blue enhanced-btn">User Login</button>
+              </Link>
             </div>
           </div>
           <div className="signup-side-img">
@@ -70,6 +48,22 @@ function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/admin-signup" element={<AdminSignup />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/user-signup" element={<RegularUserSignUp />} />
+        <Route path="/user-login" element={<RegularUserLogin />} />
+        <Route path="/user-dashboard" element={<UserDashboard />} />
+      </Routes>
+    </Router>
   );
 }
 
