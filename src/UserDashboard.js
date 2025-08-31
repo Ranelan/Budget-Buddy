@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import BudgetPage from "./BudgetPage";
+import TransactionPage from "./TransactionPage"; 
 import "./App.css";
 
 export default function UserDashboard() {
-  const [showBudget, setShowBudget] = useState(false);
+  const [activePage, setActivePage] = useState("home"); 
 
   return (
     <div className="dashboard-bg">
@@ -11,19 +12,26 @@ export default function UserDashboard() {
         <header className="dashboard-header">
           <span className="dashboard-logo">Budget Buddy</span>
           <nav className="dashboard-nav">
-            <button className="dashboard-btn" onClick={() => setShowBudget(false)}>Home</button>
-            <button className="dashboard-btn" onClick={() => setShowBudget(true)}>Budget</button>
+            <button className="dashboard-btn" onClick={() => setActivePage("home")}>
+              Home
+            </button>
+            <button className="dashboard-btn" onClick={() => setActivePage("budget")}>
+              Budget
+            </button>
+            <button className="dashboard-btn" onClick={() => setActivePage("transactions")}>
+              Transactions
+            </button>
           </nav>
         </header>
         <main className="dashboard-main">
-          {!showBudget ? (
+          {activePage === "home" && (
             <div className="dashboard-welcome">
               <h2>Welcome, Regular User!</h2>
               <p>Track your expenses, view your budget, and manage your finances all in one place.</p>
             </div>
-          ) : (
-            <BudgetPage />
           )}
+          {activePage === "budget" && <BudgetPage />}
+          {activePage === "transactions" && <TransactionPage />}
         </main>
         <footer className="dashboard-footer">
           <span className="footer-logo">BB</span>
