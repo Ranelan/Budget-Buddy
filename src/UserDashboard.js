@@ -5,6 +5,7 @@ import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
 import Category from "./Category";
 import RecurringTransaction from "./RecurringTransaction";
+import TransactionPage from "./TransactionPage";
 
 
 function Home() {
