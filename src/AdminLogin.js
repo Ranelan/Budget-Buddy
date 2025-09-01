@@ -5,7 +5,7 @@ export default function AdminLogin({ onBack }) {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    //adminCode: ""
+    userID: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -27,9 +27,14 @@ export default function AdminLogin({ onBack }) {
         })
       });
       if (response.ok) {
-        const data = await response.json();
-        alert("Login successful!\n" + JSON.stringify(data, null, 2));
-        navigate('/admin-dashboard');
+    const data = await response.json();
+    alert("Login successful!\n" + JSON.stringify(data, null, 2));
+      console.log("Successful Login:", data);
+      localStorage.setItem("adminId", data.userID);
+      localStorage.setItem("adminName", data.userName);
+
+      navigate("/admin-dashboard");
+
       } else {
         alert("Login failed. Please check your credentials.");
       }

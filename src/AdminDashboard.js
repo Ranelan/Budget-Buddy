@@ -1,4 +1,5 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./App.css";
 import Category from "./Category";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,ResponsiveContainer, } from "recharts";
@@ -7,7 +8,8 @@ const sections = [
   { key: "admin", label: "Admin Management" },
   { key: "users", label: "Regular Users" },
   { key: "categories", label: "Categories" },
-  { key: "analytics", label: "Analytics" }
+  { key: "analytics", label: "Analytics" },
+  { key: "profile", label: "Admin Profile"}
 ];
 
 function Sidebar({ selected, onSelect }) {
@@ -37,6 +39,8 @@ function MainContent({ selected }) {
       return <CategoriesSection />;
     case "analytics":
       return <AnalyticsSection />;
+    case "profile":
+      return <AdminProfileSection />;
     default:
       return <div className="dashboard-content">Select a management section.</div>;
   }
@@ -204,6 +208,100 @@ function AnalyticsSection() {
       <h2 className="text-2xl font-bold mb-6">Analytics Overview</h2>
       {renderBarChart(categoryData, "name", "Transactions by Category", "#6366F1")}
       {renderBarChart(typeData, "type", "Transactions by Type", "#10B981")}
+    </div>
+  );
+}
+const API_BASE = "http://localhost:8081/api/admin";
+function AdminProfileSection() {
+ const [admin, setAdmin] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [form, setForm] = useState({ userName: "", email: "" });
+  const [error, setError] = useState("");
+  const adminId = localStorage.getItem("adminId");
+
+  useEffect(() => {
+    if (!adminId) {
+      setError("No admin ID found. Please log in.");
+      return;
+    }
+    fetch(`${API_BASE}/read/${adminId}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Admin not found");
+        return res.json();
+      })
+      .then(data => {
+        if (!data) {
+          setError("Admin not found.");
+        } else {
+          setAdmin(data);
+          setForm({ userName: data.userName || "", email: data.email || "" });
+        }
+      })
+      .catch(() => setError("Admin not found or server error."));
+  }, [adminId]);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    const payload = { ...admin, ...form };
+    const res = await fetch(`${API_BASE}/update`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      setEditMode(false);
+      const updated = await res.json();
+      setAdmin(updated);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminId");
+    localStorage.removeItem("adminName");
+    window.location.href = "/";
+  };
+
+  if (error) return <div style={{ color: "#ff5252", padding: "2em" }}>{error}</div>;
+  if (!admin) return <div>Loading profile...</div>;
+
+  return (
+    <div className="profile-card">
+      <div className="profile-header">
+        <h2>Admin Profile</h2>
+        <button className="logout-btn" onClick={handleLogout}>Log Out</button>
+      </div>
+      {!editMode ? (
+        <div className="profile-info">
+          <div>
+            <span className="profile-label">Username:</span>
+            <span className="profile-value">{admin.userName}</span>
+          </div>
+          <div>
+            <span className="profile-label">Email:</span>
+            <span className="profile-value">{admin.email}</span>
+          </div>
+          <button className="enhanced-btn" onClick={() => setEditMode(true)}>Edit</button>
+        </div>
+      ) : (
+        <form onSubmit={handleUpdate} className="profile-form">
+          <label className="profile-label">Username:</label>
+          <input
+            className="profile-input"
+            value={form.userName}
+            onChange={e => setForm({ ...form, userName: e.target.value })}
+          />
+          <label className="profile-label">Email:</label>
+          <input
+            className="profile-input"
+            value={form.email}
+            onChange={e => setForm({ ...form, email: e.target.value })}
+          />
+          <div className="profile-btn-row">
+            <button className="enhanced-btn" type="submit">Save</button>
+            <button className="btn-delete" type="button" onClick={() => setEditMode(false)}>Cancel</button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

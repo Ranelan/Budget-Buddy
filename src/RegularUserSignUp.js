@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./App.css";
 import axios from "axios";
 
@@ -12,6 +13,7 @@ function RegularUserSignUp() {
   });
 
   const [message, setMessage] = useState(""); // Success/error messages
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,6 +29,7 @@ function RegularUserSignUp() {
 });
       setMessage("User created successfully!");
       console.log("Created user:", response.data);
+      navigate("/user-dashboard");
     } catch (error) {
       if (error.response) {
         setMessage(`Error: ${error.response.status} - ${error.response.statusText}`);

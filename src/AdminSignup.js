@@ -8,7 +8,8 @@ export default function AdminSignup({ onBack }) {
     userName: "",
     email: "",
     password: "",
-    adminCode: ""
+    adminCode: "",
+    userID: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -32,6 +33,10 @@ export default function AdminSignup({ onBack }) {
       const data = await response.json();
       setMessage("Admin created successfully!");
       console.log("Created Admin:", data);
+      localStorage.setItem("adminId", data.userID);
+      localStorage.setItem("adminName", data.userName);
+
+      navigate("/admin-dashboard");
     } else {
       setMessage("Failed to create admin");
     }

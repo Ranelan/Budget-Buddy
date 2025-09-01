@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import BudgetPage from "./Screens/BudgetPage";
 import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
@@ -7,6 +7,7 @@ import Category from "./Category";
 
 function Home() {
   const userName = localStorage.getItem("regularUserName") || "Regular User";
+  const navigate = useNavigate();
   return (
     <div className="dashboard-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <h1 style={{ color: '#21cbf3', fontWeight: 800, fontSize: '2.2em', marginBottom: '0.5em', textAlign: 'center' }}>Welcome, {userName}!</h1>
@@ -14,21 +15,21 @@ function Home() {
         Track your expenses, view your budget, and manage your finances all in one place.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2em', justifyContent: 'center', width: '100%', maxWidth: '700px' }}>
-        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
+        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' , cursor: 'pointer'}}>
           <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Budget Overview</div>
-          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>View and manage your monthly budgets.</div>
+          <div onClick={() => navigate("/user-dashboard/budget")} style={{ color: '#b0b3b8', fontSize: '1em'}}>View and manage your monthly budgets.</div>
         </div>
-        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
+        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center', cursor: 'pointer' }}>
           <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Goals</div>
-          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>Set and track your financial goals.</div>
+          <div onClick={() => navigate("/user-dashboard/goal")} style={{ color: '#b0b3b8', fontSize: '1em' }}>Set and track your financial goals.</div>
         </div>
-        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
+        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center', cursor: 'pointer' }}>
           <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Transactions</div>
-          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>View and manage your transactions.</div>
+          <div onClick={() => navigate("/user-dashboard/transaction")} style={{ color: '#b0b3b8', fontSize: '1em' }}>View and manage your transactions.</div>
         </div>
-        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
+        <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center', cursor: 'pointer' }}>
           <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Category</div>
-          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>Manage your budget categories.</div>
+          <div onClick={() => navigate("/user-dashboard/category")} style={{ color: '#b0b3b8', fontSize: '1em' }}>Manage your budget categories.</div>
         </div>
       </div>
     </div>
