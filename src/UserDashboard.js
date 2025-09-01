@@ -6,6 +6,7 @@ import Profile from "./Screens/Profile";
 import Category from "./Category";
 import RecurringTransaction from "./RecurringTransaction";
 
+
 function Home() {
   const userName = localStorage.getItem("regularUserName") || "Regular User";
   const navigate = useNavigate();
@@ -284,7 +285,7 @@ export default function UserDashboard() {
             <Route path="budget" element={<BudgetPage />} />
             <Route path="goal" element={<GoalPage />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="transaction" element={<Transaction />} />
+            <Route path="/transactions" element={<TransactionPage />} />
             <Route path="category" element={<Category />} />
             <Route path="recurring" element={<RecurringTransaction />} />
             <Route path="*" element={<Home />} />
