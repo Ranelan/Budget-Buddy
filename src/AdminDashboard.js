@@ -1,12 +1,13 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import Category from "./Category";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid,ResponsiveContainer, } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 
 const sections = [
   { key: "admin", label: "Admin Management" },
   { key: "users", label: "Regular Users" },
   { key: "categories", label: "Categories" },
+  { key: "recurring", label: "Recurring Transactions" },
   { key: "analytics", label: "Analytics" }
 ];
 
@@ -35,6 +36,8 @@ function MainContent({ selected }) {
       return <UsersSection />;
     case "categories":
       return <CategoriesSection />;
+    case "recurring":
+      return <RecurringTransactionSection />;
     case "analytics":
       return <AnalyticsSection />;
     default:
@@ -121,14 +124,16 @@ function UsersSection() {
               <th>ID</th>
               <th>User Name</th>
               <th>Email</th>
+              <th>Membership ID</th>
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id}>
-                <td>{user.id}</td>
+              <tr key={user.userID}>
+                <td>{user.userID}</td>
                 <td>{user.userName}</td>
                 <td>{user.email}</td>
+                <td>{user.membershipID}</td>
               </tr>
             ))}
           </tbody>
@@ -144,6 +149,247 @@ function CategoriesSection() {
       <Category role="admin" />
     </div>
   )
+}
+
+function RecurringTransactionSection() {
+  const [recurringTransactions, setRecurringTransactions] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [formData, setFormData] = useState({
+    recurrenceType: 'Monthly',
+    nextExecution: new Date().toISOString().split('T')[0],
+    userId: ''
+  });
+
+  useEffect(() => {
+    fetchRecurringTransactions();
+    fetchUsers();
+  }, []);
+
+  const fetchRecurringTransactions = () => {
+    setLoading(true);
+    fetch("http://localhost:8081/api/recurringTransactions/findAll")
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch recurring transactions');
+        return res.json();
+      })
+      .then(data => {
+        setRecurringTransactions(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
+
+  const fetchUsers = () => {
+    fetch("http://localhost:8081/api/admin/regular-users")
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setUsers(data))
+      .catch(err => console.error('Failed to fetch users:', err));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const createRecurringTransaction = () => {
+    if (!formData.userId) {
+      setError("Please select a user");
+      return;
+    }
+
+    const payload = {
+      recurrenceType: formData.recurrenceType,
+      nextExecution: formData.nextExecution,
+      regularUser: { userID: parseInt(formData.userId) }
+    };
+
+    fetch("http://localhost:8081/api/recurringTransactions/create", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to create transaction');
+        return res.json();
+      })
+      .then(createdTransaction => {
+        setRecurringTransactions(prev => [...prev, createdTransaction]);
+        resetForm();
+        setError('');
+      })
+      .catch(err => {
+        setError(err.message);
+      });
+  };
+
+  const deleteRecurringTransaction = (id) => {
+    if (window.confirm('Are you sure you want to delete this recurring transaction?')) {
+      fetch(`http://localhost:8081/api/recurringTransactions/delete/${id}`, { 
+        method: 'DELETE' 
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to delete transaction');
+          setRecurringTransactions(prev => 
+            prev.filter(t => t.recurringTransactionId !== id)
+          );
+        })
+        .catch(err => {
+          setError(err.message);
+        });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      recurrenceType: 'Monthly',
+      nextExecution: new Date().toISOString().split('T')[0],
+      userId: ''
+    });
+    setShowForm(false);
+  };
+
+  const getDaysUntilDue = (nextExecution) => {
+    const dueDate = new Date(nextExecution);
+    const today = new Date();
+    const diffTime = dueDate - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  if (loading) return <div className="dashboard-content">Loading recurring transactions...</div>;
+
+  return (
+    <div className="dashboard-content">
+      <h2>Recurring Transactions Management</h2>
+      
+      {error && <div className="error-message">{error}</div>}
+
+      {/* Add Transaction Button */}
+      <button 
+        className="btn-add"
+        onClick={() => setShowForm(true)}
+        style={{marginBottom: '20px'}}
+      >
+        + Create Recurring Transaction
+      </button>
+
+      {/* Create Form Modal */}
+      {showForm && (
+        <div className="modal-overlay">
+          <div className="transaction-form">
+            <h2>Create Recurring Transaction</h2>
+            
+            <div className="form-group">
+              <label>User:</label>
+              <select
+                name="userId"
+                value={formData.userId}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">Select User</option>
+                {users.map(user => (
+                  <option key={user.userID} value={user.userID}>
+                    {user.userName} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Recurrence Type:</label>
+              <select
+                name="recurrenceType"
+                value={formData.recurrenceType}
+                onChange={handleInputChange}
+              >
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Next Execution Date:</label>
+              <input
+                type="date"
+                name="nextExecution"
+                value={formData.nextExecution}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="form-actions">
+              <button className="btn-cancel" onClick={resetForm}>
+                Cancel
+              </button>
+              <button className="btn-save" onClick={createRecurringTransaction}>
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transactions Table */}
+      <div className="transactions-table">
+        <div className="table-header">
+          <span>ID</span>
+          <span>User</span>
+          <span>Recurrence Type</span>
+          <span>Next Execution</span>
+          <span>Days Left</span>
+          <span>Actions</span>
+        </div>
+        
+        {recurringTransactions.length === 0 ? (
+          <div className="no-data">No recurring transactions found</div>
+        ) : (
+          recurringTransactions.map(transaction => (
+            <div key={transaction.recurringTransactionId} className="table-row">
+              <span>#{transaction.recurringTransactionId}</span>
+              <span className="user-name">
+                {transaction.regularUser?.userName || `User #${transaction.regularUser?.userID || 'Unknown'}`}
+              </span>
+              <span className="recurrence-type">{transaction.recurrenceType}</span>
+              <span>{transaction.nextExecution}</span>
+              <span className={`days-left ${getDaysUntilDue(transaction.nextExecution) <= 3 ? 'urgent' : ''}`}>
+                {getDaysUntilDue(transaction.nextExecution)} days
+              </span>
+              <span className="actions">
+                <button 
+                  className="btn-delete"
+                  onClick={() => deleteRecurringTransaction(transaction.recurringTransactionId)}
+                >
+                  Delete
+                </button>
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-4">
+        <button 
+          className="btn-refresh"
+          onClick={fetchRecurringTransactions}
+        >
+          Refresh
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function AnalyticsSection() {

@@ -4,6 +4,7 @@ import BudgetPage from "./Screens/BudgetPage";
 import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
 import Category from "./Category";
+import RecurringTransaction from "./RecurringTransaction";
 
 function Home() {
   const userName = localStorage.getItem("regularUserName") || "Regular User";
@@ -23,8 +24,8 @@ function Home() {
           <div style={{ color: '#b0b3b8', fontSize: '1em' }}>Set and track your financial goals.</div>
         </div>
         <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
-          <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Transactions</div>
-          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>View and manage your transactions.</div>
+          <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Recurring Transactions</div>
+          <div style={{ color: '#b0b3b8', fontSize: '1em' }}>Manage your subscriptions and recurring payments.</div>
         </div>
         <div style={{ background: '#232a36', borderRadius: '18px', boxShadow: '0 2px 12px rgba(33,150,243,0.10)', padding: '2em 2.5em', textAlign: 'center' }}>
           <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '0.5em' }}>Category</div>
@@ -56,6 +57,7 @@ export default function UserDashboard() {
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/home') ? ' active' : ''}`} to="home">Home</Link>
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/budget') ? ' active' : ''}`} to="budget">Budget</Link>
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/goal') ? ' active' : ''}`} to="goal">Goals</Link>
+          <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/recurring') ? ' active' : ''}`} to="recurring">Recurring Transactions</Link>
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/transaction') ? ' active' : ''}`} to="transaction">Transaction</Link>
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/category') ? ' active' : ''}`} to="category">Category</Link>
           <Link className={`dashboard-sidebar-link${location.pathname.endsWith('/profile') ? ' active' : ''}`} to="profile">Profile</Link>
@@ -68,6 +70,7 @@ export default function UserDashboard() {
             <Route path="profile" element={<Profile />} />
             <Route path="transaction" element={<Transaction />} />
             <Route path="category" element={<Category />} />
+            <Route path="recurring" element={<RecurringTransaction />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </main>
