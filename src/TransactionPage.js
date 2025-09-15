@@ -19,9 +19,24 @@ function TransactionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Load categories and transactions
   useEffect(() => {
-    fetchTransactions();
-    fetchCategories();
+    const mockCategories = [
+      { categoryId: "1", name: "Food" },
+      { categoryId: "2", name: "Transport" },
+      { categoryId: "3", name: "Utilities" },
+      { categoryId: "4", name: "Income" },
+      { categoryId: "5", name: "Entertainment" },
+    ];
+
+    const mockTransactions = [
+      { id: 1, description: "Groceries", categoryId: "1", amount: 120, type: "Expense", date: "2025-09-01" },
+      { id: 2, description: "Bus fare", categoryId: "2", amount: 15, type: "Expense", date: "2025-09-02" },
+      { id: 3, description: "Salary", categoryId: "4", amount: 5000, type: "Income", date: "2025-09-01" },
+    ];
+
+    setCategories(mockCategories);
+    setTransactions(mockTransactions);
   }, []);
 
   const fetchTransactions = async () => {
@@ -56,7 +71,7 @@ function TransactionPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     try {
       let response;
@@ -134,88 +149,57 @@ function TransactionPage() {
     return category ? category.name : "Uncategorized";
   };
 
-  return (
-    <div className={`transaction-page ${showForm ? "modal-active" : ""}`}>
-      {/* Background overlay */}
-      {showForm && <div className="modal-backdrop" onClick={() => setShowForm(false)} />}
+  const formatAmount = (amount, type) => type === "Income" ? `R ${amount}` : `-R ${amount}`;
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
 
+  return (
+    <div className="transaction-page">
       <div className="transaction-header">
-        <h1>Transactions</h1>
-        <button className="enhanced-btn" onClick={() => setShowForm(true)}>
-          + Add Transaction
-        </button>
+        <h1>💳 Transactions</h1>
+        <button className="btn-add" onClick={() => setShowForm(true)}>+ Add Transaction</button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-
-      {/* Add Transaction Modal */}
       {showForm && (
         <div className="modal-overlay">
           <div className="transaction-form">
             <h2>{isEditing ? "Update Transaction" : "Add New Transaction"}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-row">
-                <div className="form-group">
-                  <label>Amount</label>
-                  <input
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    required
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Type</label>
-                  <select name="type" value={formData.type} onChange={handleInputChange}>
-                    <option value="Expense">Expense</option>
-                    <option value="Income">Income</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
                 <input
-                  type="text"
-                  name="description"
-                  value={formData.description}
+                  type="number"
+                  name="amount"
+                  placeholder="Amount"
+                  value={formData.amount}
                   onChange={handleInputChange}
-                  placeholder="Enter description"
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Category</label>
-                <select
-                  name="categoryId"
-                  value={formData.categoryId}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.categoryId} value={cat.categoryId}>
-                      {cat.name}
-                    </option>
-                  ))}
+                <select name="type" value={formData.type} onChange={handleInputChange}>
+                  <option value="Expense">Expense</option>
+                  <option value="Income">Income</option>
                 </select>
               </div>
-
-              <div className="form-group">
-                <label>Date</label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
+              <input
+                type="text"
+                name="description"
+                placeholder="Description"
+                value={formData.description}
+                onChange={handleInputChange}
+                required
+              />
+              {/* ✅ Category dropdown */}
+              <select
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
+                ))}
+              </select>
+              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
               <div className="form-actions">
                 <button
                   type="button"
@@ -233,11 +217,10 @@ function TransactionPage() {
         </div>
       )}
 
-      {/* Transaction List */}
       <div className="transaction-list">
-        {loading ? (
-          <div>Loading transactions...</div>
-        ) : transactions.length > 0 ? (
+        {transactions.length === 0 ? (
+          <div className="no-transactions">No transactions yet.</div>
+        ) : (
           transactions.map((t) => (
             <div key={t.id || t.transactionId} className={`transaction-card ${t.type.toLowerCase()}`} style={{
               background: '#232a36',
@@ -271,8 +254,6 @@ function TransactionPage() {
               </div>
             </div>
           ))
-        ) : (
-          <div className="no-transactions">No transactions found</div>
         )}
       </div>
     </div>
