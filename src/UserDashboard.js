@@ -6,7 +6,7 @@ import Profile from "./Screens/Profile";
 import Category from "./Category";
 import RecurringTransaction from "./RecurringTransaction";
 import TransactionPage from "./TransactionPage";
-import TransactionPage from "./TransactionPage";
+//import TransactionPage from "./TransactionPage";
 
 function Home() {
   const userName = localStorage.getItem("regularUserName") || "Regular User";
