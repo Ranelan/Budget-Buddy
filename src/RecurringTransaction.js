@@ -7,6 +7,7 @@ const USERS_URL = 'http://localhost:8081/api/regularUser/findAll';
 function RecurringTransactionsSection() {
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [users, setUsers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -22,35 +23,33 @@ function RecurringTransactionsSection() {
     userId: ''
   });
   
-  const isAdmin = localStorage.getItem("adminID") !== null;
+  // Get current user ID from localStorage
   const currentUserId = localStorage.getItem("regularUserID");
-  const currentUserRole = isAdmin ? 'admin' : 'user';
-
+  
   useEffect(() => {
-    if (isAdmin) {
-      Promise.all([fetchAllRecurringTransactions(), fetchUsers()]);
-    } else if (currentUserId) {
-      fetchUserRecurringTransactions();
-    } else {
-      setError("User not logged in");
-      setLoading(false);
-    }
-  }, [isAdmin, currentUserId]);
+    fetchAllRecurringTransactions();
+    fetchUsers();
+    fetchCategories();
+  }, []);
 
   const fetchAllRecurringTransactions = async () => {
     setLoading(true);
     setError("");
-    
     try {
       const response = await fetch(`${RECURRING_BASE_URL}/findAll`);
-      
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
-      
-      const data = await response.json();
+      const text = await response.text();
+      let data = [];
+      if (text && text.trim() !== '') {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Invalid JSON response: ' + text);
+        }
+      }
       setRecurringTransactions(data);
-      
     } catch (err) {
       console.error('Fetch error:', err);
       setError(`Failed to fetch transactions: ${err.message}`);
@@ -65,23 +64,23 @@ function RecurringTransactionsSection() {
     
     try {
       const response = await fetch(`${RECURRING_BASE_URL}/findAll`);
-      
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
-      
-      const allTransactions = await response.json();
-
-      const userTransactions = allTransactions.filter(transaction => 
-        transaction.regularUser?.userID == currentUserId || 
-        transaction.userId == currentUserId
-      );
-      
-      setRecurringTransactions(userTransactions);
-      
+      const text = await response.text();
+      let allTransactions = [];
+      if (text && text.trim() !== '') {
+        try {
+          allTransactions = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Invalid JSON response: ' + text);
+        }
+      }
+      // Show all transactions since login is not required
+      setRecurringTransactions(allTransactions);
     } catch (err) {
       console.error('Fetch error:', err);
-      setError(`Failed to fetch your transactions: ${err.message}`);
+      setError(`Failed to fetch transactions: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -107,6 +106,25 @@ function RecurringTransactionsSection() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/api/category/findAll");
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      const text = await response.text();
+      let data = [];
+      if (text && text.trim() !== "") {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Invalid JSON response: ' + text);
+        }
+      }
+      setCategories(data);
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -117,38 +135,21 @@ function RecurringTransactionsSection() {
     setSuccess("");
   };
 
+  // In createRecurringTransaction, ensure amount is sent as a number
   const createRecurringTransaction = async () => {
-    if (!isAdmin && !currentUserId) {
-      setError("Please log in to create transactions");
-      return;
-    }
-
-    if (isAdmin && !formData.userId) {
-      setError("Please select a user");
-      return;
-    }
-
-    if (!formData.nextExecution) {
-      setError("Please select a next execution date");
-      return;
-    }
-
     try {
-      const targetUserId = isAdmin ? parseInt(formData.userId) : parseInt(currentUserId);
-      
+      const targetUserId = formData.userId || currentUserId || 1;
       const payload = {
         recurrenceType: formData.recurrenceType,
         nextExecution: formData.nextExecution,
-        amount: parseFloat(formData.amount) || 0,
-        description: formData.description,
-        category: formData.category,
         regularUser: {
           userID: targetUserId
-        }
+        },
+        description: formData.description,
+        amount: Number(formData.amount),
+        category: formData.category
       };
-
-      console.log('Creating transaction:', payload);
-
+      console.log('Payload sent to backend:', payload); // Debug log
       const response = await fetch(`${RECURRING_BASE_URL}/create`, {
         method: 'POST',
         headers: { 
@@ -157,24 +158,12 @@ function RecurringTransactionsSection() {
         },
         body: JSON.stringify(payload)
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create: ${response.status} - ${errorText}`);
-      }
-
       const createdTransaction = await response.json();
-      
-      if (isAdmin) {
-        fetchAllRecurringTransactions();
-      } else {
-        fetchUserRecurringTransactions();
-      }
-      
+      console.log('Created transaction from backend:', createdTransaction); // Debug log
+      fetchAllRecurringTransactions();
       resetForm();
       setSuccess('Recurring transaction created successfully!');
       setTimeout(() => setSuccess(''), 3000);
-
     } catch (err) {
       console.error('Create error:', err);
       setError(err.message);
@@ -184,10 +173,9 @@ function RecurringTransactionsSection() {
   const deleteRecurringTransaction = async (id) => {
     if (window.confirm('Are you sure you want to delete this recurring transaction?')) {
       try {
-        const response = await fetch(`${RECURRING_BASE_URL}/delete/${id}`, { 
+        const response = await fetch(`${RECURRING_BASE_URL}/delete${id}`, { 
           method: 'DELETE' 
         });
-        
         if (response.status === 204 || response.ok) {
           setRecurringTransactions(prev => 
             prev.filter(t => t.recurringTransactionId !== id)
@@ -252,10 +240,11 @@ function RecurringTransactionsSection() {
     }
   };
 
+  // Update formatCurrency to use ZAR (South African Rand)
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'ZAR'
     }).format(amount || 0);
   };
 
@@ -281,26 +270,25 @@ function RecurringTransactionsSection() {
   };
 
   const refreshData = () => {
-    if (isAdmin) {
-      fetchAllRecurringTransactions();
-      fetchUsers();
-    } else {
-      fetchUserRecurringTransactions();
-    }
+    fetchAllRecurringTransactions();
+    fetchUsers();
   };
 
   if (loading) {
     return (
       <div className="dashboard-content">
-        <h2>{isAdmin ? 'Recurring Transactions Management' : 'My Recurring Transactions'}</h2>
-        <div className="loading">Loading {isAdmin ? 'all' : 'your'} transactions...</div>
+        <h2>{'Recurring Transactions'}</h2>
+        <div className="loading">Loading your transactions...</div>
       </div>
     );
   }
 
+  // Check if the current user is admin
+  const isAdmin = localStorage.getItem("isAdmin") === "true";
+
   return (
     <div className="dashboard-content">
-      <h2>{isAdmin ? 'Recurring Transactions Management' : 'My Recurring Transactions'}</h2>
+      <h2>{'Recurring Transactions'}</h2>
       
       {error && (
         <div className="error-message">
@@ -326,7 +314,7 @@ function RecurringTransactionsSection() {
           onClick={() => setShowForm(true)}
           style={{ marginRight: '10px' }}
         >
-          + {isAdmin ? 'Create' : 'Add'} Recurring Transaction
+          + Create Recurring Transaction
         </button>
         <button className="btn-refresh" onClick={refreshData}>
           ↻ Refresh
@@ -336,7 +324,7 @@ function RecurringTransactionsSection() {
       {showForm && (
         <div className="modal-overlay">
           <div className="transaction-form">
-            <h2>{isAdmin ? 'Create' : 'Add'} Recurring Transaction</h2>
+            <h2>Add Recurring Transaction</h2>
             
             {/* User selection for admin only */}
             {isAdmin && (
@@ -388,14 +376,17 @@ function RecurringTransactionsSection() {
 
             <div className="form-group">
               <label>Category:</label>
-              <input
-                type="text"
+              <select
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                placeholder="e.g., Entertainment, Utilities"
                 required
-              />
+              >
+                <option value="">Select Category</option>
+                {categories.map(cat => (
+                  <option key={cat.categoryId} value={cat.name}>{cat.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -432,14 +423,13 @@ function RecurringTransactionsSection() {
                 className="btn-save" 
                 onClick={createRecurringTransaction}
                 disabled={
-                  (isAdmin ? !formData.userId : false) || 
                   !formData.description || 
                   !formData.amount || 
                   !formData.category || 
                   !formData.nextExecution
                 }
               >
-                {isAdmin ? 'Create' : 'Add'}
+                Add
               </button>
             </div>
           </div>
@@ -448,7 +438,6 @@ function RecurringTransactionsSection() {
 
       <div className="transactions-table">
         <div className="table-header">
-          {isAdmin && <span>User</span>}
           <span>Description</span>
           <span>Amount</span>
           <span>Category</span>
@@ -462,11 +451,12 @@ function RecurringTransactionsSection() {
           <div className="no-data">
             No recurring transactions found.{" "}
             <button onClick={() => setShowForm(true)} className="text-link">
-              {isAdmin ? 'Create' : 'Add'} your first transaction
+              Create your first transaction
             </button>
           </div>
         ) : (
           recurringTransactions.map(transaction => {
+            console.log('Transaction row:', transaction); // Debug log
             const daysInfo = getDaysUntilDue(transaction.nextExecution);
             const displayName = getUserDisplayName(transaction);
             
@@ -475,9 +465,6 @@ function RecurringTransactionsSection() {
                 key={transaction.recurringTransactionId}
                 className="table-row"
               >
-                {isAdmin && (
-                  <span className="user-name">{displayName}</span>
-                )}
                 <span className="transaction-description">
                   {transaction.description || 'No description'}
                 </span>
@@ -519,7 +506,6 @@ function RecurringTransactionsSection() {
           <h3>Summary</h3>
           <p>
             Total recurring transactions: <strong>{recurringTransactions.length}</strong>
-            {isAdmin && ` across ${new Set(recurringTransactions.map(t => t.regularUser?.userID)).size} users`}
             {' • '}
             Estimated monthly total: <strong>{formatCurrency(recurringTransactions.reduce((total, t) => {
               if (t.recurrenceType === 'MONTHLY') return total + (t.amount || 0);

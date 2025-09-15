@@ -5,6 +5,7 @@ import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
 import Category from "./Category";
 import RecurringTransaction from "./RecurringTransaction";
+import TransactionPage from "./TransactionPage";
 
 function Home() {
   const userName = localStorage.getItem("regularUserName") || "Regular User";
@@ -284,7 +285,7 @@ export default function UserDashboard() {
             <Route path="budget" element={<BudgetPage />} />
             <Route path="goal" element={<GoalPage />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="transaction" element={<Transaction />} />
+            <Route path="transaction" element={<TransactionPage />} />
             <Route path="category" element={<Category />} />
             <Route path="recurring" element={<RecurringTransaction />} />
             <Route path="*" element={<Home />} />

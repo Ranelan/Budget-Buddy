@@ -29,7 +29,22 @@ function Category({ role = 'user' }) {
   const fetchCategories = useCallback(() => {
     setLoading(true);
     fetch(`${BASE_URL}/findAll`)
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+      .then(async res => {
+        const text = await res.text();
+        console.log('Raw response from /findAll:', text);
+        if (!res.ok) {
+          throw new Error('Failed to fetch: ' + text);
+        }
+        let data = [];
+        if (text && text.trim() !== '') {
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            throw new Error('Invalid JSON response: ' + text);
+          }
+        }
+        return data;
+      })
       .then(data => {
         setCategories(data);
         applyFilters(data);
@@ -127,13 +142,12 @@ function Category({ role = 'user' }) {
       console.log('Response status:', response.status);
       const responseText = await response.text();
       console.log('Response text:', responseText);
-      
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${responseText}`);
       }
-      
+      let savedData;
       try {
-        const savedData = JSON.parse(responseText);
+        savedData = responseText && responseText.trim() !== '' ? JSON.parse(responseText) : {};
         console.log('Saved successfully:', savedData);
         alert('Category saved successfully!');
         fetchCategories();
