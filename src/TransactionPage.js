@@ -4,6 +4,7 @@ import "./App.css";
 const API_BASE = "http://localhost:8081/api/transactions";
 
 function TransactionPage() {
+  // State hooks at the top of the component
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -71,7 +72,7 @@ function TransactionPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       let response;
@@ -141,8 +142,7 @@ function TransactionPage() {
     return new Date(dateString).toLocaleDateString("en-US", options);
   };
 
-  const formatAmount = (amount, type) =>
-    type === "Income" ? `R ${amount}` : `-R ${amount}`;
+
 
   const getCategoryName = (categoryId) => {
     const category = categories.find((cat) => cat.categoryId === categoryId);
@@ -150,8 +150,7 @@ function TransactionPage() {
   };
 
   const formatAmount = (amount, type) => type === "Income" ? `R ${amount}` : `-R ${amount}`;
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+
 
   return (
     <div className="transaction-page">

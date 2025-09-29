@@ -23,74 +23,30 @@ function Home() {
         height: "100%",
       }}
     >
-      <h1
-        style={{
-          color: "#21cbf3",
-          fontWeight: 800,
-          fontSize: "2.2em",
-          marginBottom: "0.5em",
-          textAlign: "center",
-        }}
-      >
+      <h1 className="dashboard-welcome">
         Welcome, {userName}!
       </h1>
-      <p
-        style={{
-          color: "#b0b3b8",
-          fontSize: "1.2em",
-          textAlign: "center",
-          marginBottom: "2em",
-        }}
-      >
+      <p className="dashboard-subtitle">
         Track your expenses, view your budget, and manage your finances all in one place.
       </p>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "2em",
-          justifyContent: "center",
-          width: "100%",
-          maxWidth: "700px",
-        }}
-      >
+      <div className="dashboard-grid">
         {/* Budget Overview */}
-        <div
-          style={{
-            background: "#232a36",
-            borderRadius: "18px",
-            boxShadow: "0 2px 12px rgba(33,150,243,0.10)",
-            padding: "2em 2.5em",
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-          onClick={() => navigate("/user-dashboard/budget")}
-        >
-          <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em" }}>
+        <div className="dashboard-card" onClick={() => navigate("/user-dashboard/budget")}>
+          <div className="dashboard-card-title">
             Budget Overview
           </div>
-          <div style={{ color: "#b0b3b8", fontSize: "1em" }}>
+          <div className="dashboard-card-subtitle">
             View and manage your monthly budgets.
           </div>
         </div>
 
         {/* Goals */}
-        <div
-          style={{
-            background: "#232a36",
-            borderRadius: "18px",
-            boxShadow: "0 2px 12px rgba(33,150,243,0.10)",
-            padding: "2em 2.5em",
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-          onClick={() => navigate("/user-dashboard/goal")}
-        >
-          <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em" }}>
+        <div className="dashboard-card" onClick={() => navigate("/user-dashboard/goal")}>
+          <div className="dashboard-card-title">
             Goals
           </div>
-          <div style={{ color: "#b0b3b8", fontSize: "1em" }}>
+          <div className="dashboard-card-subtitle">
             Set and track your financial goals.
           </div>
         </div>
