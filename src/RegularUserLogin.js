@@ -11,7 +11,8 @@ const API_URL = "http://localhost:8081/api/regularUser";
 function RegularUserLogin() {
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
+    accountType: ""
   });
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
@@ -52,53 +53,66 @@ function RegularUserLogin() {
   };
 
   return (
-    <div className="signup-bg">
-      <div className="signup-container">
-        <div className="signup-header">
-          <span className="signup-appdot" />
-          <span className="signup-appname">Budget Buddy</span>
-        </div>
-        <div className="signup-content">
-          <div className="signup-form-section">
-            <div className="signup-title-group">
-              <span className="signup-subtitle">USER LOGIN</span>
-              <h1 className="signup-title">Sign in<span className="signup-title-dot">.</span></h1>
-              <span className="signup-login-link">Don't have an account? <a href="/user-signup" className="signup-link-btn">Sign Up</a></span>
+    <div className="modern-login-bg">
+      <div className="modern-login-container">
+        <div className="modern-login-card">
+          <div className="modern-login-header">
+            <h1 className="modern-login-title">Welcome Back</h1>
+            <p className="modern-login-subtitle">Sign in to your PersonalFinance account</p>
+          </div>
+          
+          <form className="modern-login-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">Account Type</label>
+              <select 
+                name="accountType"
+                className="form-select"
+                value={formData.accountType}
+                onChange={handleChange}
+              >
+                <option value="">Select account type</option>
+                <option value="regular">Regular User</option>
+                <option value="admin">Administrator</option>
+              </select>
             </div>
-            <form className="signup-form" onSubmit={handleSubmit}>
+            
+            <div className="form-group">
+              <label className="form-label">Email</label>
               <input
                 name="email"
-                className="signup-input"
+                className="form-input"
                 type="email"
-                placeholder="Email"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
                 required
               />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Password</label>
               <input
                 name="password"
-                className="signup-input signup-input-password"
+                className="form-input"
                 type="password"
-                placeholder="Password"
+                placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
-              <div className="signup-btn-row">
-                <button type="submit" className="signup-btn signup-btn-blue">Login</button>
-              </div>
-              {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
-            </form>
-          </div>
-          <div className="signup-side-img">
-            <div className="signup-side-img-content">
-              <span className="signup-side-img-icon">💰</span>
-              <span className="signup-side-img-text">Smart budgeting helps you save, plan, and achieve your financial goals. Start tracking your expenses and take control today!</span>
             </div>
-          </div>
-        </div>
-        <div className="signup-footer">
-          <span className="signup-footer-logo">BB</span>
+            
+            <button type="submit" className="modern-login-btn">Sign In</button>
+            
+            {message && <p className="login-message">{message}</p>}
+            
+            <div className="login-links">
+              <a href="#" className="forgot-password-link">Forgot your password?</a>
+              <p className="signup-prompt">
+                Don't have an account? <a href="/user-signup" className="signup-link">Sign up</a>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>
