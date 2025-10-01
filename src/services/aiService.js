@@ -77,8 +77,8 @@ class AIFinancialService {
     
     return `As a professional financial advisor, provide 3-5 personalized financial tips for a user with the following profile:
 
-Monthly Income: $${monthlyIncome}
-Monthly Expenses: $${monthlyExpenses}
+Monthly Income: R${monthlyIncome}
+Monthly Expenses: R${monthlyExpenses}
 Current Savings Rate: ${savingsRate}%
 Savings Goals: ${savingsGoals.length > 0 ? savingsGoals.map(g => g.name).join(', ') : 'None set'}
 Budget Categories: ${categories.length > 0 ? categories.join(', ') : 'Basic categories'}
@@ -88,7 +88,7 @@ Please provide:
 1. Actionable, specific advice tailored to their financial situation
 2. Tips that are realistic and achievable
 3. Focus on areas where they can improve most
-4. Include specific dollar amounts or percentages when relevant
+4. Include specific Rand amounts or percentages when relevant
 5. Keep each tip concise (1-2 sentences)
 
 Format as a JSON array of tip objects with 'title', 'description', and 'priority' (high/medium/low) fields.`;
