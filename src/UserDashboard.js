@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import BudgetPage from "./Screens/BudgetPage";
 import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
@@ -9,39 +9,8 @@ import TransactionPage from "./TransactionPage";
 import AIFinancialTips from "./components/AIFinancialTips";
 import "./App.css";
 
-// Dashboard Navigation Component
-function DashboardNav({ currentPage }) {
-  const navigate = useNavigate();
 
-  const navItems = [
-    { path: "/user-dashboard/home", label: "Home", icon: "fas fa-home" },
-    { path: "/user-dashboard/budget", label: "Budget", icon: "fas fa-chart-pie" },
-    { path: "/user-dashboard/goal", label: "Goals", icon: "fas fa-bullseye" },
-    { path: "/user-dashboard/transaction", label: "Transactions", icon: "fas fa-exchange-alt" },
-    { path: "/user-dashboard/recurring", label: "Recurring", icon: "fas fa-sync-alt" },
-    { path: "/user-dashboard/category", label: "Categories", icon: "fas fa-tags" },
-    { path: "/user-dashboard/profile", label: "Profile", icon: "fas fa-user-cog" }
-  ];
-
-  return (
-    <nav className="dashboard-nav">
-      <div className="dashboard-nav-container">
-        {navItems.map((item) => (
-          <button
-            key={item.path}
-            className={`dashboard-nav-item ${currentPage === item.path ? 'active' : ''}`}
-            onClick={() => navigate(item.path)}
-          >
-            <i className={item.icon}></i>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
-function Home() {
+function HomeContent() {
   const userName = localStorage.getItem("regularUserName") || "User";
   const navigate = useNavigate();
 
@@ -91,49 +60,46 @@ function Home() {
   ];
 
   return (
-    <div className="professional-dashboard">
-      <DashboardNav currentPage="/user-dashboard/home" />
-      
-      <div className="dashboard-container">
-        <div className="dashboard-hero fade-in">
-          <div className="dashboard-hero-content">
-            <h1 className="dashboard-title">
-              Welcome back, <span className="text-primary">{userName}</span>! 💼
-            </h1>
-            <p className="dashboard-subtitle">
-              Take control of your financial future with AI-powered insights and smart budgeting tools.
-            </p>
+    <main className="dashboard-main">
+        {/* Welcome Section */}
+        <section className="welcome-section">
+          <h1 className="welcome-title">
+            Welcome back, <span>{userName}</span>! 
+          </h1>
+          <p className="welcome-subtitle">
+            Manage your finances with ease and confidence
+          </p>
+        </section>
+
+        {/* Dashboard Cards */}
+        <section className="cards-section">
+          <div className="cards-grid">
+            {dashboardCards.map((card, index) => (
+              <div 
+                key={index}
+                className="feature-card" 
+                onClick={() => navigate(card.path)}
+              >
+                <div className="card-header">
+                  <div className="card-icon">
+                    <i className={card.icon}></i>
+                  </div>
+                  <i className="fas fa-arrow-right card-arrow"></i>
+                </div>
+                <div className="card-body">
+                  <h3 className="card-title">{card.title}</h3>
+                  <p className="card-description">{card.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
 
-        <div className="dashboard-grid slide-up">
-          {dashboardCards.map((card, index) => (
-            <div 
-              key={index}
-              className="dashboard-card" 
-              onClick={() => navigate(card.path)}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="dashboard-card-icon">
-                <i className={card.icon}></i>
-              </div>
-              <div className="dashboard-card-content">
-                <h3 className="dashboard-card-title">{card.title}</h3>
-                <p className="dashboard-card-description">{card.description}</p>
-              </div>
-              <div className="dashboard-card-arrow">
-                <i className="fas fa-arrow-right"></i>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* AI Financial Tips Section */}
-        <div className="fade-in" style={{ animationDelay: '0.8s' }}>
+        {/* AI Tips Section */}
+        <section className="ai-section">
           <AIFinancialTips />
-        </div>
-      </div>
-    </div>
+        </section>
+    </main>
   );
 }
 
@@ -142,16 +108,21 @@ export default function UserDashboard() {
 
   return (
     <div className="user-dashboard-wrapper">
-      <Routes>
-        <Route path="home" element={<Home />} />
-        <Route path="budget" element={<BudgetPage />} />
-        <Route path="goal" element={<GoalPage />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="transaction" element={<TransactionPage />} />
-        <Route path="category" element={<Category />} />
-        <Route path="recurring" element={<RecurringTransaction />} />
-        <Route path="*" element={<Home />} />
-      </Routes>
+      <div className="clean-dashboard">
+        <div className="dashboard-content">
+          <Routes>
+            <Route index element={<HomeContent />} />
+            <Route path="home" element={<HomeContent />} />
+            <Route path="budget" element={<BudgetPage />} />
+            <Route path="goal" element={<GoalPage />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="transaction" element={<TransactionPage />} />
+            <Route path="category" element={<Category />} />
+            <Route path="recurring" element={<RecurringTransaction />} />
+            <Route path="*" element={<HomeContent />} />
+          </Routes>
+        </div>
+      </div>
     </div>
   );
 }
