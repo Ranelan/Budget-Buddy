@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import AdminDashboard from "./AdminDashboard";
@@ -181,7 +181,7 @@ function Home() {
                 <div className="hero-stat-label">Happy Users</div>
               </div>
               <div className="hero-stat">
-                <div className="hero-stat-number">$2M+</div>
+                <div className="hero-stat-number">R2M+</div>
                 <div className="hero-stat-label">Money Saved</div>
               </div>
               <div className="hero-stat">
@@ -300,7 +300,12 @@ function Home() {
 function AppHeader() {
   const { isAuthenticated, userType, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const isDashboard = location.pathname.startsWith('/user-dashboard') || location.pathname.startsWith('/admin-dashboard');
+  const userName = localStorage.getItem("regularUserName") || localStorage.getItem("adminName") || "User";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -312,13 +317,34 @@ function AppHeader() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.header-user-dropdown')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isDropdownOpen]);
+
   const handleLogout = () => {
+    setIsDropdownOpen(false);
     logout();
     navigate('/');
   };
 
+  const dashboardNavItems = [
+    { path: "/user-dashboard/home", label: "Dashboard", icon: "fas fa-home" },
+    { path: "/user-dashboard/budget", label: "Budget", icon: "fas fa-chart-pie" },
+    { path: "/user-dashboard/goal", label: "Goals", icon: "fas fa-bullseye" },
+    { path: "/user-dashboard/transaction", label: "Transactions", icon: "fas fa-exchange-alt" },
+    { path: "/user-dashboard/recurring", label: "Recurring", icon: "fas fa-sync-alt" },
+    { path: "/user-dashboard/category", label: "Categories", icon: "fas fa-tags" }
+  ];
+
   return (
-    <header className={`professional-header ${isScrolled ? 'scrolled' : ''}`} role="banner">
+    <header className={`professional-header ${isScrolled ? 'scrolled' : ''} ${isDashboard ? 'dashboard-header' : ''}`} role="banner">
       <div className="header-container">
         <Link to="/" className="header-logo">
           <div className="header-logo-icon">
@@ -329,32 +355,74 @@ function AppHeader() {
           </span>
         </Link>
         
-        <nav className="header-nav" role="navigation" aria-label="Main navigation">
-          <Link to="/" className="header-nav-link">Home</Link>
-          <Link to="/about" className="header-nav-link">About</Link>
-          <Link to="/contact" className="header-nav-link">Contact</Link>
-          {isAuthenticated && (
-            <Link 
-              to={userType === 'admin' ? '/admin-dashboard' : '/user-dashboard'} 
-              className="header-nav-link active"
-            >
-              Dashboard
-            </Link>
-          )}
-        </nav>
+        {isDashboard && isAuthenticated ? (
+          // Dashboard Navigation
+          <nav className="header-dashboard-nav" role="navigation" aria-label="Dashboard navigation">
+            {dashboardNavItems.map((item) => {
+              const isActive = location.pathname === item.path || 
+                (item.path === "/user-dashboard/home" && location.pathname === "/user-dashboard");
+              
+              return (
+                <button
+                  key={item.path}
+                  className={`header-dashboard-nav-item ${isActive ? 'active' : ''}`}
+                  onClick={() => navigate(item.path)}
+                >
+                  <i className={item.icon}></i>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        ) : (
+          // Main Navigation
+          <nav className="header-nav" role="navigation" aria-label="Main navigation">
+            {isAuthenticated && (
+              <Link 
+                to="/user-dashboard/home" 
+                className={`header-nav-link ${isDashboard ? 'active' : ''}`}
+              >
+                Dashboard
+              </Link>
+            )}
+            <Link to="/" className={`header-nav-link ${location.pathname === '/' ? 'active' : ''}`}>Home</Link>
+            <Link to="/about" className={`header-nav-link ${location.pathname === '/about' ? 'active' : ''}`}>About</Link>
+            <Link to="/contact" className={`header-nav-link ${location.pathname === '/contact' ? 'active' : ''}`}>Contact</Link>
+          </nav>
+        )}
 
         <div className="header-actions">
           {isAuthenticated ? (
-            <>
-              <div className="header-user-info">
-                <i className="fas fa-user-circle"></i>
-                <span>{userType === 'admin' ? 'Admin' : 'User'}</span>
-              </div>
-              <button onClick={handleLogout} className="btn btn-outline btn-sm">
-                <i className="fas fa-sign-out-alt"></i>
-                Logout
+            <div className={`header-user-dropdown ${isDropdownOpen ? 'open' : ''}`}>
+              <button 
+                className="header-user-trigger"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                <div className="header-user-badge">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+                <div className="header-user-info-text">
+                  <div className="header-user-name">{userName}</div>
+                  <div className="header-user-role">{userType === 'admin' ? 'Admin' : 'User'}</div>
+                </div>
+                <i className="fas fa-chevron-down header-dropdown-icon"></i>
               </button>
-            </>
+              <div className="header-user-dropdown-menu">
+                <Link to="/user-dashboard/profile" className="header-dropdown-item">
+                  <i className="fas fa-user"></i>
+                  Profile
+                </Link>
+                <Link to="/settings" className="header-dropdown-item">
+                  <i className="fas fa-cog"></i>
+                  Settings
+                </Link>
+                <div className="header-dropdown-divider"></div>
+                <button onClick={handleLogout} className="header-dropdown-item danger">
+                  <i className="fas fa-sign-out-alt"></i>
+                  Logout
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               <Link to="/login" className="btn btn-ghost btn-sm">
