@@ -168,7 +168,7 @@ function TransactionPage() {
                 <input
                   type="number"
                   name="amount"
-                  placeholder="Amount"
+                  placeholder="Amount (R)"
                   value={formData.amount}
                   onChange={handleInputChange}
                   required
