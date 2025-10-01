@@ -136,13 +136,13 @@ export default function GoalPage() {
           onChange={e => setForm({ ...form, goalName: e.target.value })}
         />
         <input
-          placeholder="Target Amount"
+          placeholder="Target Amount (R)"
           type="number"
           value={form.targetAmount}
           onChange={e => setForm({ ...form, targetAmount: e.target.value })}
         />
         <input
-          placeholder="Current Amount"
+          placeholder="Current Amount (R)"
           type="number"
           value={form.currentAmount}
           onChange={e => setForm({ ...form, currentAmount: e.target.value })}
@@ -171,8 +171,8 @@ export default function GoalPage() {
           {goals.map(g => (
             <tr key={g.goalId || g.id} onClick={() => openUpdateModal(g)} style={{ cursor: "pointer" }}>
               <td>{g.goalName}</td>
-              <td>{g.targetAmount}</td>
-              <td>{g.currentAmount}</td>
+              <td>R{Number(g.targetAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>R{Number(g.currentAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td>{g.deadLine}</td>
             </tr>
           ))}
@@ -189,13 +189,13 @@ export default function GoalPage() {
                 onChange={e => setUpdateForm({ ...updateForm, goalName: e.target.value })}
               />
               <input
-                placeholder="Target Amount"
+                placeholder="Target Amount (R)"
                 type="number"
                 value={updateForm.targetAmount}
                 onChange={e => setUpdateForm({ ...updateForm, targetAmount: e.target.value })}
               />
               <input
-                placeholder="Current Amount"
+                placeholder="Current Amount (R)"
                 type="number"
                 value={updateForm.currentAmount}
                 onChange={e => setUpdateForm({ ...updateForm, currentAmount: e.target.value })}
