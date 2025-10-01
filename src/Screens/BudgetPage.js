@@ -147,90 +147,245 @@ export default function BudgetPage() {
   };
 
   return (
-    <div className="dashboard-content">
-      <div className="budget-main-card">
-        <h1 className="budget-title">Budget Management</h1>
-        {message && <div className="budget-message">{message}</div>}
-        <form className="budget-form" onSubmit={handleCreate}>
-          <div style={{ display: 'flex', gap: '1em', width: '100%', justifyContent: 'center' }}>
-            <input
-              className="signup-input"
-              placeholder="Month"
-              value={form.month}
-              onChange={e => setForm({ ...form, month: e.target.value })}
-            />
-            <input
-              className="signup-input"
-              placeholder="Year"
-              value={form.year}
-              onChange={e => setForm({ ...form, year: e.target.value })}
-            />
-            <input
-              className="signup-input"
-              placeholder="Limit Amount"
-              type="number"
-              value={form.limitAmount}
-              onChange={e => setForm({ ...form, limitAmount: e.target.value })}
-            />
-          </div>
-          <button className="enhanced-btn" type="submit" style={{ margin: '0 auto', display: 'block' }}>Create Budget</button>
-        </form>
-        {selectedId && (
-          <div className="budget-id-actions">
-            <button className="btn-edit" onClick={openUpdateModal}>Update</button>
-            <button className="btn-delete" onClick={handleDelete}>Delete</button>
-          </div>
-        )}
+    <div className="dashboard-main">
+      {/* Welcome Section */}
+      <section className="welcome-section">
+        <h1 className="welcome-title">
+          <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem', color: 'hsl(var(--primary))' }}></i>
+          Budget Management
+        </h1>
+        <p className="welcome-subtitle">
+          Set and manage your monthly spending limits to stay on track with your financial goals.
+        </p>
+      </section>
 
-        {showUpdateModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h2>Update Budget</h2>
-              <form onSubmit={handleUpdateSubmit} className="budget-form">
-                <div style={{ display: 'flex', gap: '1em', width: '100%', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <input
-                    className="signup-input"
-                    placeholder="Month"
-                    value={updateForm.month}
-                    onChange={e => setUpdateForm({ ...updateForm, month: e.target.value })}
-                  />
-                  <input
-                    className="signup-input"
-                    placeholder="Year"
-                    value={updateForm.year}
-                    onChange={e => setUpdateForm({ ...updateForm, year: e.target.value })}
-                  />
-                  <input
-                    className="signup-input"
-                    placeholder="Limit Amount"
-                    type="number"
-                    value={updateForm.limitAmount}
-                    onChange={e => setUpdateForm({ ...updateForm, limitAmount: e.target.value })}
-                  />
-                </div>
-                <div className="modal-btn-row">
-                  <button className="enhanced-btn" type="submit">Save</button>
-                  <button className="btn-delete" type="button" onClick={() => setShowUpdateModal(false)}>Cancel</button>
-                </div>
-              </form>
+      {/* Alert Message */}
+      {message && (
+        <section className="alert-section">
+          <div className={`status-alert ${message.includes('Failed') || message.includes('not found') ? 'error' : 'success'}`}>
+            <i className={`fas ${message.includes('Failed') || message.includes('not found') ? 'fa-exclamation-triangle' : 'fa-check-circle'}`}></i>
+            <span>{message}</span>
+            <button className="alert-close" onClick={() => setMessage('')}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Create Budget Section */}
+      <section className="cards-section">
+        <div className="feature-card budget-create-card">
+          <div className="card-header">
+            <div className="card-icon">
+              <i className="fas fa-plus-circle"></i>
             </div>
           </div>
-        )}
-        <h2 className="budgets-title">Budgets</h2>
-        <div className="budget-cards-container">
-          {budgets.length === 0 ? (
-            <div className="no-budgets">No budgets found.</div>
-          ) : (
-            budgets.map(b => (
-              <div key={b.budgetId} className="budget-card" onClick={() => setSelectedId(b.budgetId)}>
-                <div className="budget-card-month-year">{b.month} {b.year}</div>
-                <div className="budget-card-limit-label">Limit:</div>
-                <div className="budget-card-limit-amount">{b.limitAmount}</div>
+          <div className="card-body">
+            <h3 className="card-title">Create New Budget</h3>
+            <p className="card-description">Set a spending limit for a specific month and year</p>
+            
+            <form className="budget-form" onSubmit={handleCreate}>
+              <div className="form-grid-budget">
+                <div className="form-group">
+                  <label className="form-label">Month</label>
+                  <input
+                    className="form-input"
+                    placeholder="e.g., January"
+                    value={form.month}
+                    onChange={e => setForm({ ...form, month: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Year</label>
+                  <input
+                    className="form-input"
+                    placeholder="e.g., 2025"
+                    type="number"
+                    value={form.year}
+                    onChange={e => setForm({ ...form, year: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Budget Limit (ZAR)</label>
+                  <input
+                    className="form-input"
+                    placeholder="0.00"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={form.limitAmount}
+                    onChange={e => setForm({ ...form, limitAmount: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
-            ))
-          )}
+              <div className="form-actions">
+                <button className="btn btn-primary" type="submit">
+                  <i className="fas fa-plus"></i>
+                  Create Budget
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Selected Budget Actions */}
+      {selectedId && (
+        <section className="cards-section">
+          <div className="feature-card budget-actions-card">
+            <div className="card-header">
+              <div className="card-icon">
+                <i className="fas fa-cog"></i>
+              </div>
+            </div>
+            <div className="card-body">
+              <h3 className="card-title">Budget Actions</h3>
+              <p className="card-description">Manage your selected budget</p>
+              <div className="action-buttons">
+                <button className="btn btn-outline" onClick={openUpdateModal}>
+                  <i className="fas fa-edit"></i>
+                  Update Budget
+                </button>
+                <button className="btn btn-destructive" onClick={handleDelete}>
+                  <i className="fas fa-trash"></i>
+                  Delete Budget
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="modal-title">
+                <i className="fas fa-edit"></i>
+                Update Budget
+              </h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowUpdateModal(false)}
+                type="button"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <form onSubmit={handleUpdateSubmit}>
+              <div className="modal-body">
+                <div className="form-grid-budget">
+                  <div className="form-group">
+                    <label className="form-label">Month</label>
+                    <input
+                      className="form-input"
+                      placeholder="Month"
+                      value={updateForm.month}
+                      onChange={e => setUpdateForm({ ...updateForm, month: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Year</label>
+                    <input
+                      className="form-input"
+                      placeholder="Year"
+                      type="number"
+                      value={updateForm.year}
+                      onChange={e => setUpdateForm({ ...updateForm, year: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Budget Limit (ZAR)</label>
+                    <input
+                      className="form-input"
+                      placeholder="Limit Amount"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={updateForm.limitAmount}
+                      onChange={e => setUpdateForm({ ...updateForm, limitAmount: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline" type="button" onClick={() => setShowUpdateModal(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit">
+                  <i className="fas fa-save"></i>
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Budgets List */}
+      <section className="cards-section">
+        <div className="section-header">
+          <h2 className="section-title">
+            <i className="fas fa-list"></i>
+            Your Budgets
+          </h2>
+          <p className="section-subtitle">
+            {budgets.length > 0 ? `${budgets.length} budget${budgets.length !== 1 ? 's' : ''} found` : 'No budgets created yet'}
+          </p>
+        </div>
+
+        {budgets.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              <i className="fas fa-chart-pie"></i>
+            </div>
+            <h3 className="empty-title">No budgets found</h3>
+            <p className="empty-description">
+              Create your first budget to start tracking your monthly spending limits.
+            </p>
+          </div>
+        ) : (
+          <div className="cards-grid">
+            {budgets.map(b => (
+              <div 
+                key={b.budgetId} 
+                className={`feature-card budget-item-card ${selectedId === b.budgetId ? 'selected' : ''}`}
+                onClick={() => setSelectedId(selectedId === b.budgetId ? "" : b.budgetId)}
+              >
+                <div className="card-header">
+                  <div className="card-icon">
+                    <i className="fas fa-calendar-alt"></i>
+                  </div>
+                  {selectedId === b.budgetId && (
+                    <div className="selected-indicator">
+                      <i className="fas fa-check-circle"></i>
+                    </div>
+                  )}
+                </div>
+                <div className="card-body">
+                  <h3 className="card-title">{b.month} {b.year}</h3>
+                  <div className="budget-amount-display">
+                    <span className="budget-label">Budget Limit</span>
+                    <span className="budget-value">
+                      R{Number(b.limitAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p className="card-description">
+                    Click to {selectedId === b.budgetId ? 'deselect' : 'select'} this budget
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
