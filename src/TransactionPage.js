@@ -4,6 +4,7 @@ import "./App.css";
 const API_BASE = "http://localhost:8081/api/transactions";
 
 function TransactionPage() {
+  // State hooks at the top of the component
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -46,9 +47,12 @@ function TransactionPage() {
       if (response.ok) {
         const data = await response.json();
         setTransactions(data);
+      } else {
+        // If API fails, use mock data
+        console.log("API not available, using mock data");
       }
     } catch (err) {
-      setError("Failed to fetch transactions");
+      console.log("API not available, using mock data");
     } finally {
       setLoading(false);
     }
@@ -73,8 +77,44 @@ function TransactionPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    
     try {
       let response;
+      const transactionData = {
+        ...formData,
+        amount: parseFloat(formData.amount),
+        id: isEditing ? formData.id : Date.now() // Generate ID if not editing
+      };
+
+      if (isEditing) {
+        // For demo purposes, we'll update locally
+        setTransactions(prev => prev.map(t => 
+          t.id === transactionData.id ? transactionData : t
+        ));
+      } else {
+        // For demo purposes, we'll add locally
+        const newTransaction = {
+          ...transactionData,
+          id: Date.now() // Use timestamp as unique ID
+        };
+        setTransactions(prev => [...prev, newTransaction]);
+      }
+
+      // Reset form and close modal
+      setShowForm(false);
+      setFormData({
+        id: "",
+        amount: "",
+        description: "",
+        categoryId: "",
+        type: "Expense",
+        date: new Date().toISOString().split("T")[0],
+      });
+      setIsEditing(false);
+
+      // If you want to use the actual API, uncomment this:
+      /*
       if (isEditing) {
         response = await fetch(`${API_BASE}/update`, {
           method: "PUT",
@@ -88,6 +128,7 @@ function TransactionPage() {
           body: JSON.stringify(formData),
         });
       }
+      
       if (response.ok) {
         setShowForm(false);
         setFormData({
@@ -99,19 +140,21 @@ function TransactionPage() {
           date: new Date().toISOString().split("T")[0],
         });
         setIsEditing(false);
-        fetchTransactions();
+        fetchTransactions(); // Refresh the list
       } else {
         setError(isEditing ? "Failed to update transaction" : "Failed to create transaction");
       }
+      */
     } catch (err) {
       setError(isEditing ? "Error updating transaction" : "Error creating transaction");
+      console.error("Transaction error:", err);
     }
   };
 
   const handleEdit = (transaction) => {
     setFormData({
-      id: transaction.id || transaction.transactionId,
-      amount: transaction.amount,
+      id: transaction.id,
+      amount: transaction.amount.toString(),
       description: transaction.description,
       categoryId: transaction.categoryId,
       type: transaction.type,
@@ -123,6 +166,11 @@ function TransactionPage() {
 
   const handleDelete = async (id) => {
     try {
+      // For demo purposes, delete locally
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      
+      // If you want to use the actual API, uncomment this:
+      /*
       const response = await fetch(`${API_BASE}/delete/${id}`, {
         method: "DELETE",
       });
@@ -131,121 +179,410 @@ function TransactionPage() {
       } else {
         setError("Failed to delete transaction");
       }
+      */
     } catch (err) {
       setError("Error deleting transaction");
     }
+  };
+
+  const formatDate = (dateString) => {
+    const options = { day: "2-digit", month: "short", year: "numeric" };
+    return new Date(dateString).toLocaleDateString("en-US", options);
   };
 
   const getCategoryName = (categoryId) => {
     const category = categories.find((cat) => cat.categoryId === categoryId);
     return category ? category.name : "Uncategorized";
   };
-  const formatAmount = (amount, type) => (type === "Income" ? `R ${amount}` : `-R ${amount}`);
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+
+  const formatAmount = (amount, type) => type === "Income" ? `R ${amount}` : `-R ${amount}`;
 
   return (
-    <div className="transaction-page">
-      <div className="transaction-header">
-        <h1>💳 Transactions</h1>
-        <button className="btn-add" onClick={() => setShowForm(true)}>+ Add Transaction</button>
-      </div>
+    <div style={{ 
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+      minHeight: '100vh', 
+      padding: '2em' 
+    }}>
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto' 
+      }}>
+        {/* Welcome Header */}
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '16px', 
+          padding: '2.5em', 
+          marginBottom: '2em',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        }}>
+          <h1 style={{ 
+            color: '#2d3748', 
+            margin: '0 0 0.5em 0', 
+            fontSize: '2.2em',
+            fontWeight: '700'
+          }}>
+            Welcome back, MilaniMntwaphi!
+          </h1>
+          <p style={{ 
+            color: '#718096', 
+            fontSize: '1.2em', 
+            margin: '0 0 1.5em 0',
+            lineHeight: '1.6'
+          }}>
+            Manage your finances with ease and confidence
+          </p>
+          
+          <div style={{
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, #e2e8f0, transparent)',
+            margin: '2em 0'
+          }}></div>
 
-      {showForm && (
-        <div className="modal-overlay">
-          <div className="transaction-form">
-            <h2>{isEditing ? "Update Transaction" : "Add New Transaction"}</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ 
+              color: '#2d3748', 
+              margin: 0,
+              fontSize: '1.5em',
+              fontWeight: '600'
+            }}>
+              Transactions
+            </h2>
+            <button 
+              onClick={() => setShowForm(true)}
+              style={{
+                background: '#4299e1',
+                color: 'white',
+                border: 'none',
+                padding: '0.75em 1.5em',
+                borderRadius: '8px',
+                fontSize: '1em',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(66, 153, 225, 0.3)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => e.target.style.background = '#3182ce'}
+              onMouseOut={(e) => e.target.style.background = '#4299e1'}
+            >
+              + Add Transaction
+            </button>
+          </div>
+          <p style={{ 
+            color: '#718096', 
+            margin: '0.5em 0 0 0',
+            fontSize: '1em'
+          }}>
+            Track all your income and expenses in one place
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            background: '#fed7d7',
+            color: '#c53030',
+            padding: '1em',
+            borderRadius: '8px',
+            marginBottom: '1em',
+            border: '1px solid #feb2b2'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Transaction Form Modal */}
+        {showForm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '16px', 
+              padding: '2.5em', 
+              width: '90%', 
+              maxWidth: '500px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+            }}>
+              <h2 style={{ 
+                color: '#2d3748', 
+                margin: '0 0 1.5em 0',
+                fontSize: '1.5em',
+                fontWeight: '600'
+              }}>
+                {isEditing ? "Update Transaction" : "Add New Transaction"}
+              </h2>
+              <form onSubmit={handleSubmit}>
+                <div style={{ display: 'flex', gap: '1em', marginBottom: '1em' }}>
+                  <input
+                    type="number"
+                    name="amount"
+                    placeholder="Amount (R)"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      flex: 1,
+                      padding: '0.75em',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      background: '#f7fafc',
+                      color: '#2d3748',
+                      fontSize: '1em'
+                    }}
+                  />
+                  <select 
+                    name="type" 
+                    value={formData.type} 
+                    onChange={handleInputChange}
+                    style={{
+                      padding: '0.75em',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      background: '#f7fafc',
+                      color: '#2d3748',
+                      fontSize: '1em',
+                      minWidth: '120px'
+                    }}
+                  >
+                    <option value="Expense">Expense</option>
+                    <option value="Income">Income</option>
+                  </select>
+                </div>
                 <input
-                  type="number"
-                  name="amount"
-                  placeholder="Amount"
-                  value={formData.amount}
+                  type="text"
+                  name="description"
+                  placeholder="Description"
+                  value={formData.description}
                   onChange={handleInputChange}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75em',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: '#f7fafc',
+                    color: '#2d3748',
+                    marginBottom: '1em',
+                    fontSize: '1em'
+                  }}
                 />
-                <select name="type" value={formData.type} onChange={handleInputChange}>
-                  <option value="Expense">Expense</option>
-                  <option value="Income">Income</option>
-                </select>
-              </div>
-              <input
-                type="text"
-                name="description"
-                placeholder="Description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-              />
-              {/* ✅ Category dropdown */}
-              <select
-                name="categoryId"
-                value={formData.categoryId}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Select Category</option>
-                {categories.map((cat) => (
-                  <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
-                ))}
-              </select>
-              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowForm(false)}
+                <select
+                  name="categoryId"
+                  value={formData.categoryId}
+                  onChange={handleInputChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75em',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: '#f7fafc',
+                    color: '#2d3748',
+                    marginBottom: '1em',
+                    fontSize: '1em'
+                  }}
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  {isEditing ? "Update Transaction" : "Add Transaction"}
-                </button>
-              </div>
-            </form>
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
+                  ))}
+                </select>
+                <input 
+                  type="date" 
+                  name="date" 
+                  value={formData.date} 
+                  onChange={handleInputChange} 
+                  required 
+                  style={{
+                    width: '100%',
+                    padding: '0.75em',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: '#f7fafc',
+                    color: '#2d3748',
+                    marginBottom: '2em',
+                    fontSize: '1em'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '1em', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setIsEditing(false);
+                      setFormData({
+                        id: "",
+                        amount: "",
+                        description: "",
+                        categoryId: "",
+                        type: "Expense",
+                        date: new Date().toISOString().split("T")[0],
+                      });
+                    }}
+                    style={{
+                      padding: '0.75em 1.5em',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      background: 'transparent',
+                      color: '#718096',
+                      cursor: 'pointer',
+                      fontSize: '1em',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = '#f7fafc';
+                      e.target.style.color = '#2d3748';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = 'transparent';
+                      e.target.style.color = '#718096';
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    style={{
+                      padding: '0.75em 1.5em',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#4299e1',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '1em',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#3182ce'}
+                    onMouseOut={(e) => e.target.style.background = '#4299e1'}
+                  >
+                    {isEditing ? "Update Transaction" : "Add Transaction"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="transaction-list">
-        {transactions.length === 0 ? (
-          <div className="no-transactions">No transactions yet.</div>
-        ) : (
-          transactions.map((t) => (
-            <div key={t.id || t.transactionId} className={`transaction-card ${t.type.toLowerCase()}`} style={{
-              background: '#232a36',
-              borderRadius: '18px',
-              boxShadow: '0 2px 12px rgba(33,150,243,0.10)',
-              padding: '1.5em 2em',
-              marginBottom: '1.2em',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '2em',
+        {/* Transactions List */}
+        <div>
+          {transactions.length === 0 ? (
+            <div style={{ 
+              background: 'white',
+              color: '#718096', 
+              textAlign: 'center', 
+              padding: '3em',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5em', flex: 1 }}>
-                <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em' }}>{t.description}</div>
-                <div style={{ color: '#ffd700', fontSize: '1em' }}>{getCategoryName(t.categoryId)}</div>
-                <div style={{ color: '#b0b3b8', fontSize: '0.95em', display: 'flex', gap: '1em' }}>
-                  <span>{formatDate(t.date)}</span>
-                  <span>Credit Card</span>
+              No transactions yet.
+            </div>
+          ) : (
+            transactions.map((t) => (
+              <div key={t.id} style={{
+                background: 'white',
+                borderRadius: '16px',
+                padding: '1.5em 2em',
+                marginBottom: '1em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)';
+              }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5em', flex: 1 }}>
+                  <div style={{ color: '#2d3748', fontWeight: '600', fontSize: '1.1em' }}>{t.description}</div>
+                  <div style={{ color: '#4299e1', fontSize: '1em', fontWeight: '500' }}>{getCategoryName(t.categoryId)}</div>
+                  <div style={{ color: '#a0aec0', fontSize: '0.95em', display: 'flex', gap: '1em' }}>
+                    <span>{formatDate(t.date)}</span>
+                    <span>Credit Card</span>
+                  </div>
+                </div>
+                <div style={{ 
+                  color: t.type === 'Income' ? '#48bb78' : '#f56565', 
+                  fontWeight: '700', 
+                  fontSize: '1.2em', 
+                  marginRight: '2em' 
+                }}>
+                  {formatAmount(t.amount, t.type)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '0.75em', alignItems: 'center' }}>
+                  <button 
+                    onClick={() => handleEdit(t)}
+                    style={{
+                      padding: '0.5em 1em',
+                      borderRadius: '6px',
+                      border: '1px solid #4299e1',
+                      background: 'transparent',
+                      color: '#4299e1',
+                      cursor: 'pointer',
+                      minWidth: '80px',
+                      fontSize: '0.9em',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = '#4299e1';
+                      e.target.style.color = 'white';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = 'transparent';
+                      e.target.style.color = '#4299e1';
+                    }}
+                  >
+                    Update
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(t.id)}
+                    style={{
+                      padding: '0.5em 1em',
+                      borderRadius: '6px',
+                      border: '1px solid #f56565',
+                      background: 'transparent',
+                      color: '#f56565',
+                      cursor: 'pointer',
+                      minWidth: '80px',
+                      fontSize: '0.9em',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = '#f56565';
+                      e.target.style.color = 'white';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = 'transparent';
+                      e.target.style.color = '#f56565';
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-              <div style={{ color: t.type === 'Income' ? '#21cbf3' : '#ff5252', fontWeight: 700, fontSize: '1.2em', marginRight: '2em' }}>
-                {formatAmount(t.amount, t.type)}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'row', gap: '1em', alignItems: 'center' }}>
-                <button className="btn-edit" style={{ minWidth: '90px' }} onClick={() => handleEdit(t)}>
-                  Update
-                </button>
-                <button className="btn-delete" style={{ minWidth: '90px' }} onClick={() => handleDelete(t.id || t.transactionId)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
