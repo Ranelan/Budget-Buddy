@@ -1,5 +1,6 @@
 import React, { useState,useEffect } from "react";
 import "./App.css";
+import Toast from "./components/Toast";
 import Category from "./Category";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 
@@ -103,6 +104,10 @@ function UsersSection() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ userName: "", email: "", membershipID: "" });
+  const [actionMessage, setActionMessage] = useState("");
+  const [toast, setToast] = useState({ message: '', type: 'success' });
 
   React.useEffect(() => {
     setLoading(true);
@@ -112,12 +117,84 @@ function UsersSection() {
       .catch(err => { setError("Failed to fetch users"); setLoading(false); });
   }, []);
 
+  const refreshUsers = () => {
+    setLoading(true);
+    fetch("http://localhost:8081/api/admin/regular-users")
+      .then(res => res.json())
+      .then(data => { setUsers(data); setLoading(false); })
+      .catch(err => { setError("Failed to fetch users"); setLoading(false); });
+  };
+
+  const openEditModal = (user) => {
+    setEditingUser(user);
+    setEditForm({ userName: user.userName || "", email: user.email || "", membershipID: user.membershipID || "" });
+    setActionMessage("");
+  };
+
+  const closeEditModal = () => {
+    setEditingUser(null);
+    setEditForm({ userName: "", email: "", membershipID: "" });
+    setActionMessage("");
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      const payload = {
+        userID: editingUser.userID,
+        userName: editForm.userName,
+        email: editForm.email,
+        membershipID: editForm.membershipID
+      };
+
+      const res = await fetch(`http://localhost:8081/api/admin/regular-users/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to update user');
+      const updated = await res.json();
+
+      // Update local state
+  setUsers(prev => prev.map(u => (u.userID === updated.userID ? updated : u)));
+  setActionMessage('User updated successfully');
+  setToast({ message: 'User updated', type: 'success' });
+  setTimeout(() => closeEditModal(), 800);
+    } catch (err) {
+      setActionMessage(err.message || 'Update failed');
+    }
+  };
+
+  const handleDelete = async (userID) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`http://localhost:8081/api/admin/regular-users/delete/${userID}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete user');
+  // Remove from local state
+  setUsers(prev => prev.filter(u => u.userID !== userID));
+  setActionMessage('User deleted');
+  setToast({ message: 'User deleted', type: 'success' });
+    } catch (err) {
+      setActionMessage(err.message || 'Delete failed');
+    }
+  };
+
   return (
     <div className="dashboard-content">
       <h2>Regular Users</h2>
       {loading ? <div>Loading...</div> : null}
       {error ? <div style={{color:'red'}}>{error}</div> : null}
+  {actionMessage ? <div className="info-message" style={{marginBottom: '12px'}}>{actionMessage}</div> : null}
+  <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
       {users.length === 0 && !loading ? <div>No users found.</div> : null}
+
       {Array.isArray(users) && users.length > 0 && (
         <table className="dashboard-table">
           <thead>
@@ -126,6 +203,7 @@ function UsersSection() {
               <th>User Name</th>
               <th>Email</th>
               <th>Membership ID</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -135,10 +213,42 @@ function UsersSection() {
                 <td>{user.userName}</td>
                 <td>{user.email}</td>
                 <td>{user.membershipID}</td>
+                <td>
+                  <button className="btn btn-outline" onClick={() => openEditModal(user)} style={{marginRight:'8px'}}>Edit</button>
+                  <button className="btn-delete" onClick={() => handleDelete(user.userID)}>Delete</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* Edit Modal */}
+      {editingUser && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3>Edit User</h3>
+            <form onSubmit={handleEditSubmit} className="modal-form">
+              <div className="form-group">
+                <label>Username</label>
+                <input name="userName" value={editForm.userName} onChange={handleEditChange} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input name="email" value={editForm.email} onChange={handleEditChange} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label>Membership ID</label>
+                <input name="membershipID" value={editForm.membershipID} onChange={handleEditChange} className="form-input" />
+              </div>
+              {actionMessage && <div className="error-message">{actionMessage}</div>}
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={closeEditModal}>Cancel</button>
+                <button type="submit" className="btn-save">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -158,6 +268,7 @@ function RecurringTransactionSection() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState({ message: '', type: 'success' });
 
   const [formData, setFormData] = useState({
     recurrenceType: 'Monthly',
@@ -226,7 +337,8 @@ function RecurringTransactionSection() {
       .then(createdTransaction => {
         setRecurringTransactions(prev => [...prev, createdTransaction]);
         resetForm();
-        setError('');
+          setError('');
+          setToast({ message: 'Recurring transaction created', type: 'success' });
       })
       .catch(err => {
         setError(err.message);
@@ -243,6 +355,7 @@ function RecurringTransactionSection() {
           setRecurringTransactions(prev => 
             prev.filter(t => t.recurringTransactionId !== id)
           );
+          setToast({ message: 'Recurring transaction deleted', type: 'success' });
         })
         .catch(err => {
           setError(err.message);
@@ -272,6 +385,8 @@ function RecurringTransactionSection() {
     <div className="dashboard-content">
       <h2>Recurring Transactions Management</h2>
       
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
+
       {error && <div className="error-message">{error}</div>}
 
       {/* Add Transaction Button */}
@@ -460,6 +575,7 @@ function AdminProfileSection() {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ userName: "", email: "" });
   const [error, setError] = useState("");
+  const [toast, setToast] = useState({ message: '', type: 'success' });
   const adminId = localStorage.getItem("adminId");
 
   useEffect(() => {
@@ -495,6 +611,7 @@ function AdminProfileSection() {
       setEditMode(false);
       const updated = await res.json();
       setAdmin(updated);
+      setToast({ message: 'Profile updated', type: 'success' });
     }
   };
 
@@ -509,6 +626,7 @@ function AdminProfileSection() {
 
   return (
     <div className="profile-card">
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
       <div className="profile-header">
         <h2>Admin Profile</h2>
         <button className="logout-btn" onClick={handleLogout}>Log Out</button>
