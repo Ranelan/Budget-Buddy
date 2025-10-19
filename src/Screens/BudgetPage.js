@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Toast from "../components/Toast";
 
 const API_BASE = "http://localhost:8081/api/budget";
 
@@ -10,6 +11,10 @@ export default function BudgetPage() {
   const [message, setMessage] = useState("");
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({ month: "", year: "", limitAmount: "" });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   // Fetch all budgets
   useEffect(() => {
@@ -147,245 +152,148 @@ export default function BudgetPage() {
   };
 
   return (
-    <div className="dashboard-main">
-      {/* Welcome Section */}
-      <section className="welcome-section">
-        <h1 className="welcome-title">
-          <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem', color: 'hsl(var(--primary))' }}></i>
-          Budget Management
-        </h1>
-        <p className="welcome-subtitle">
-          Set and manage your monthly spending limits to stay on track with your financial goals.
-        </p>
-      </section>
-
-      {/* Alert Message */}
-      {message && (
-        <section className="alert-section">
-          <div className={`status-alert ${message.includes('Failed') || message.includes('not found') ? 'error' : 'success'}`}>
-            <i className={`fas ${message.includes('Failed') || message.includes('not found') ? 'fa-exclamation-triangle' : 'fa-check-circle'}`}></i>
-            <span>{message}</span>
-            <button className="alert-close" onClick={() => setMessage('')}>
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* Create Budget Section */}
-      <section className="cards-section">
-        <div className="feature-card budget-create-card">
-          <div className="card-header">
-            <div className="card-icon">
-              <i className="fas fa-plus-circle"></i>
-            </div>
-          </div>
-          <div className="card-body">
-            <h3 className="card-title">Create New Budget</h3>
-            <p className="card-description">Set a spending limit for a specific month and year</p>
-            
-            <form className="budget-form" onSubmit={handleCreate}>
-              <div className="form-grid-budget">
-                <div className="form-group">
-                  <label className="form-label">Month</label>
-                  <input
-                    className="form-input"
-                    placeholder="e.g., January"
-                    value={form.month}
-                    onChange={e => setForm({ ...form, month: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Year</label>
-                  <input
-                    className="form-input"
-                    placeholder="e.g., 2025"
-                    type="number"
-                    value={form.year}
-                    onChange={e => setForm({ ...form, year: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Budget Limit (ZAR)</label>
-                  <input
-                    className="form-input"
-                    placeholder="0.00"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={form.limitAmount}
-                    onChange={e => setForm({ ...form, limitAmount: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-actions">
-                <button className="btn btn-primary" type="submit">
-                  <i className="fas fa-plus"></i>
-                  Create Budget
-                </button>
-              </div>
-            </form>
-          </div>
+    <div className="dashboard-content">
+      <div className="budget-main-card">
+        <div className="goal-header">
+          <h1 className="budget-title">Budget Management</h1>
+          <button className="signup-btn signup-btn-blue add-goal-btn" onClick={() => setShowCreateModal(true)}>
+            + Add Budget
+          </button>
         </div>
-      </section>
+        {message && <div className="budget-message">{message}</div>}
 
-      {/* Selected Budget Actions */}
-      {selectedId && (
-        <section className="cards-section">
-          <div className="feature-card budget-actions-card">
-            <div className="card-header">
-              <div className="card-icon">
-                <i className="fas fa-cog"></i>
-              </div>
-            </div>
-            <div className="card-body">
-              <h3 className="card-title">Budget Actions</h3>
-              <p className="card-description">Manage your selected budget</p>
-              <div className="action-buttons">
-                <button className="btn btn-outline" onClick={openUpdateModal}>
-                  <i className="fas fa-edit"></i>
-                  Update Budget
-                </button>
-                <button className="btn btn-destructive" onClick={handleDelete}>
-                  <i className="fas fa-trash"></i>
-                  Delete Budget
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+        {/* Create moved to modal */}
 
-      {/* Update Modal */}
-      {showUpdateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 className="modal-title">
-                <i className="fas fa-edit"></i>
-                Update Budget
-              </h3>
-              <button 
-                className="modal-close"
-                onClick={() => setShowUpdateModal(false)}
-                type="button"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <form onSubmit={handleUpdateSubmit}>
-              <div className="modal-body">
+        <h2 className="budgets-title">Budgets</h2>
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+            <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
+              <h2>Create Budget</h2>
+              <form className="budget-form" onSubmit={async (e) => {
+                e.preventDefault();
+                // call handleCreate logic but without event
+                // validation
+                if (!form.month.trim() || !form.year.trim() || !form.limitAmount || Number(form.limitAmount) <= 0) {
+                  setMessage("All fields are required and limit amount must be greater than zero.");
+                  return;
+                }
+                const payload = {
+                  month: form.month,
+                  year: form.year,
+                  limitAmount: form.limitAmount,
+                  regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
+                };
+                const res = await fetch(`${API_BASE}/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (res.ok) {
+                  setMessage('Budget created!');
+                  setToastMessage('Budget created successfully');
+                  setToastType('success');
+                  setShowCreateModal(false);
+                  // clear form
+                  setForm({ month: '', year: '', limitAmount: '' });
+                  // refresh budgets
+                  fetch(`${API_BASE}/findAll`).then(res => res.ok ? res.json() : []).then(setBudgets).catch(() => setBudgets([]));
+                } else {
+                  setMessage('Failed to create budget.');
+                  setToastMessage('Failed to create budget');
+                  setToastType('error');
+                }
+              }}>
                 <div className="form-grid-budget">
-                  <div className="form-group">
-                    <label className="form-label">Month</label>
-                    <input
-                      className="form-input"
-                      placeholder="Month"
-                      value={updateForm.month}
-                      onChange={e => setUpdateForm({ ...updateForm, month: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Year</label>
-                    <input
-                      className="form-input"
-                      placeholder="Year"
-                      type="number"
-                      value={updateForm.year}
-                      onChange={e => setUpdateForm({ ...updateForm, year: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Budget Limit (ZAR)</label>
-                    <input
-                      className="form-input"
-                      placeholder="Limit Amount"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={updateForm.limitAmount}
-                      onChange={e => setUpdateForm({ ...updateForm, limitAmount: e.target.value })}
-                      required
-                    />
-                  </div>
+                  <input className="signup-input" placeholder="Month" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} />
+                  <input className="signup-input" placeholder="Year" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} />
+                  <input className="signup-input" placeholder="Limit Amount" type="number" value={form.limitAmount} onChange={e => setForm({ ...form, limitAmount: e.target.value })} />
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-outline" type="button" onClick={() => setShowUpdateModal(false)}>
-                  Cancel
-                </button>
-                <button className="btn btn-primary" type="submit">
-                  <i className="fas fa-save"></i>
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Budgets List */}
-      <section className="cards-section">
-        <div className="section-header">
-          <h2 className="section-title">
-            <i className="fas fa-list"></i>
-            Your Budgets
-          </h2>
-          <p className="section-subtitle">
-            {budgets.length > 0 ? `${budgets.length} budget${budgets.length !== 1 ? 's' : ''} found` : 'No budgets created yet'}
-          </p>
-        </div>
-
-        {budgets.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <i className="fas fa-chart-pie"></i>
+                <div className="modal-btn-row">
+                  <button className="enhanced-btn" type="submit">Create Budget</button>
+                  <button className="btn-delete" type="button" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                </div>
+              </form>
             </div>
-            <h3 className="empty-title">No budgets found</h3>
-            <p className="empty-description">
-              Create your first budget to start tracking your monthly spending limits.
-            </p>
           </div>
-        ) : (
-          <div className="cards-grid">
-            {budgets.map(b => (
-              <div 
-                key={b.budgetId} 
-                className={`feature-card budget-item-card ${selectedId === b.budgetId ? 'selected' : ''}`}
-                onClick={() => setSelectedId(selectedId === b.budgetId ? "" : b.budgetId)}
-              >
-                <div className="card-header">
-                  <div className="card-icon">
-                    <i className="fas fa-calendar-alt"></i>
+        )}
+        {/* Toast */}
+        <Toast message={toastMessage} type={toastType} duration={3000} onClose={() => setToastMessage("")} />
+        <div className="goal-grid">
+          {budgets.length === 0 ? (
+            <div className="no-budgets">No budgets found.</div>
+          ) : (
+            budgets.map(b => {
+              const target = Number(b.limitAmount) || 0;
+              const current = 0; // current spending not available here
+              const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+              const remaining = Math.max(0, (target - current).toFixed(2));
+              return (
+                <div key={b.budgetId} className="goal-card" onClick={() => setSelectedId(b.budgetId)}>
+                  <div className="goal-card-top">
+                    <div className="goal-title">{b.month} {b.year}</div>
+                    <div className="goal-amount">{target}</div>
                   </div>
-                  {selectedId === b.budgetId && (
-                    <div className="selected-indicator">
-                      <i className="fas fa-check-circle"></i>
+                  <div className="progress-track"><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
+                  <div className="goal-meta">
+                    <div className="remaining">R{remaining} remaining</div>
+                    <div className="percent-used">{percent}% used</div>
+                  </div>
+                  {String(selectedId) === String(b.budgetId) && (
+                    <div className="goal-controls">
+                      <button className="btn-edit" onClick={(ev) => { ev.stopPropagation(); openUpdateModal(); }}>Update</button>
+                      <button className="btn-delete" onClick={(ev) => { ev.stopPropagation(); setSelectedId(b.budgetId); setShowDeleteModal(true); }}>Delete</button>
                     </div>
                   )}
                 </div>
-                <div className="card-body">
-                  <h3 className="card-title">{b.month} {b.year}</h3>
-                  <div className="budget-amount-display">
-                    <span className="budget-label">Budget Limit</span>
-                    <span className="budget-value">
-                      R{Number(b.limitAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p className="card-description">
-                    Click to {selectedId === b.budgetId ? 'deselect' : 'select'} this budget
-                  </p>
+              );
+            })
+          )}
+        </div>
+        {/* Update Modal (aligned with navbar/main content) */}
+        {showUpdateModal && (
+          <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
+            <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
+              <h2>Update Budget</h2>
+              <form className="budget-form" onSubmit={handleUpdateSubmit}>
+                <div className="form-grid-budget">
+                  <input className="signup-input" placeholder="Month" value={updateForm.month} onChange={e => setUpdateForm({ ...updateForm, month: e.target.value })} />
+                  <input className="signup-input" placeholder="Year" value={updateForm.year} onChange={e => setUpdateForm({ ...updateForm, year: e.target.value })} />
+                  <input className="signup-input" placeholder="Limit Amount" type="number" value={updateForm.limitAmount} onChange={e => setUpdateForm({ ...updateForm, limitAmount: e.target.value })} />
                 </div>
-              </div>
-            ))}
+                <div className="modal-btn-row">
+                  <button className="enhanced-btn" type="submit">Save Changes</button>
+                  <button className="btn-delete" type="button" onClick={() => setShowDeleteModal(true)}>Delete</button>
+                  <button className="btn-delete" type="button" onClick={() => setShowUpdateModal(false)}>Cancel</button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
-      </section>
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+            <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
+              <h2>Delete Budget</h2>
+              <p>Are you sure you want to delete this budget? This action cannot be undone.</p>
+              <div className="modal-btn-row" style={{ marginTop: '1rem' }}>
+                <button className="btn-delete" onClick={async () => {
+                  // call existing delete handler and then close modals and show toast
+                  const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: 'DELETE' });
+                  if (res.ok) {
+                    setToastMessage('Budget deleted');
+                    setToastType('success');
+                    setShowDeleteModal(false);
+                    setShowUpdateModal(false);
+                    // refresh budgets
+                    fetch(`${API_BASE}/findAll`).then(r => r.ok ? r.json() : []).then(setBudgets).catch(() => setBudgets([]));
+                  } else {
+                    setToastMessage('Failed to delete budget');
+                    setToastType('error');
+                  }
+                }}>Confirm Delete</button>
+                <button className="enhanced-btn" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
