@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./App.css";
+import Toast from "./components/Toast";
 
 
 export default function AdminSignup({ onBack }) {
@@ -13,6 +14,7 @@ export default function AdminSignup({ onBack }) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -31,12 +33,11 @@ export default function AdminSignup({ onBack }) {
 
     if (response.ok) {
       const data = await response.json();
-      setMessage("Admin created successfully!");
       console.log("Created Admin:", data);
       localStorage.setItem("adminId", data.userID);
       localStorage.setItem("adminName", data.userName);
-
-      navigate("/admin-dashboard");
+      // show toast then redirect to admin login
+      setToastMessage("Admin account created. You can now log in.");
     } else {
       setMessage("Failed to create admin");
     }
@@ -129,6 +130,15 @@ export default function AdminSignup({ onBack }) {
                 <button type="submit" className="signup-btn signup-btn-blue">Create account</button>
               </div>
               {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
+              <Toast
+                message={toastMessage}
+                type="success"
+                duration={3000}
+                onClose={() => {
+                  setToastMessage("");
+                  navigate('/admin-login');
+                }}
+              />
             </form>
           </div>
           <div className="signup-side-img">
