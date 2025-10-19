@@ -95,6 +95,7 @@ function AuthProvider({ children }) {
 // Protected Route Components
 function ProtectedRoute({ children, requiredUserType = null }) {
   const { isAuthenticated, userType, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -107,7 +108,8 @@ function ProtectedRoute({ children, requiredUserType = null }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Save the attempted URL in location state so Login can redirect back
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (requiredUserType && userType !== requiredUserType) {
@@ -304,7 +306,8 @@ function AppHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const isDashboard = location.pathname.startsWith('/user-dashboard') || location.pathname.startsWith('/admin-dashboard');
+  // Only treat the user dashboard as the 'dashboard' navigation — don't show user dashboard links on admin pages
+  const isDashboard = location.pathname.startsWith('/user-dashboard');
   const userName = localStorage.getItem("regularUserName") || localStorage.getItem("adminName") || "User";
 
   useEffect(() => {
@@ -355,7 +358,7 @@ function AppHeader() {
           </span>
         </Link>
         
-        {isDashboard && isAuthenticated ? (
+        {isDashboard && isAuthenticated && userType === 'user' ? (
           // Dashboard Navigation
           <nav className="header-dashboard-nav" role="navigation" aria-label="Dashboard navigation">
             {dashboardNavItems.map((item) => {
@@ -377,12 +380,17 @@ function AppHeader() {
         ) : (
           // Main Navigation
           <nav className="header-nav" role="navigation" aria-label="Main navigation">
-            {isAuthenticated && (
+            {isAuthenticated && userType === 'user' && (
               <Link 
                 to="/user-dashboard/home" 
                 className={`header-nav-link ${isDashboard ? 'active' : ''}`}
               >
                 Dashboard
+              </Link>
+            )}
+            {isAuthenticated && userType === 'admin' && (
+              <Link to="/admin-dashboard" className={`header-nav-link ${location.pathname.startsWith('/admin-dashboard') ? 'active' : ''}`}>
+                Admin
               </Link>
             )}
             <Link to="/" className={`header-nav-link ${location.pathname === '/' ? 'active' : ''}`}>Home</Link>
@@ -530,6 +538,8 @@ function App() {
 function LoginLanding() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const location = useLocation();
+  const from = location.state && location.state.from ? location.state.from.pathname : null;
   const [formData, setFormData] = useState({
     accountType: "",
     email: "",
@@ -578,7 +588,9 @@ function LoginLanding() {
           
           setMessage("Admin login successful! Redirecting...");
           setTimeout(() => {
-            navigate("/admin-dashboard");
+            // If user was trying to access a protected route, return them there
+            if (from) navigate(from);
+            else navigate("/admin-dashboard");
           }, 800);
         } else {
           setMessage("Admin login failed. Please check your credentials.");
@@ -605,7 +617,8 @@ function LoginLanding() {
 
         setMessage("User login successful! Redirecting...");
         setTimeout(() => {
-          navigate('/user-dashboard');
+          if (from) navigate(from);
+          else navigate('/user-dashboard');
         }, 800);
       }
     } catch (error) {
@@ -704,6 +717,8 @@ function LoginLanding() {
 function SignupLanding() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const location = useLocation();
+  const from = location.state && location.state.from ? location.state.from.pathname : null;
   const [formData, setFormData] = useState({
     accountType: "",
     userName: "",
@@ -757,7 +772,8 @@ function SignupLanding() {
           
           setMessage("Admin created successfully! Redirecting...");
           setTimeout(() => {
-            navigate("/admin-dashboard");
+            if (from) navigate(from);
+            else navigate("/admin-dashboard");
           }, 800);
         } else {
           setMessage("Failed to create admin account.");
@@ -775,7 +791,8 @@ function SignupLanding() {
 
         setMessage("User created successfully! Redirecting...");
         setTimeout(() => {
-          navigate("/user-dashboard");
+          if (from) navigate(from);
+          else navigate("/user-dashboard");
         }, 800);
       }
     } catch (error) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
+import Toast from './components/Toast';
 
 const BASE_URL = 'http://localhost:8081/api/category';
 const USERS_URL = 'http://localhost:8081/api/admin/regular-users';
@@ -22,6 +23,7 @@ function Category({ role = 'user' }) {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [reassignCategoryId, setReassignCategoryId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: 'success' });
 
   const isAdmin = role === 'admin';
 
@@ -146,13 +148,13 @@ function Category({ role = 'user' }) {
         throw new Error(`HTTP ${response.status}: ${responseText}`);
       }
       let savedData;
-      try {
-        savedData = responseText && responseText.trim() !== '' ? JSON.parse(responseText) : {};
-        console.log('Saved successfully:', savedData);
-        alert('Category saved successfully!');
-        fetchCategories();
-        resetForm();
-        return savedData;
+        try {
+            savedData = responseText && responseText.trim() !== '' ? JSON.parse(responseText) : {};
+            console.log('Saved successfully:', savedData);
+            setToast({ message: 'Category saved', type: 'success' });
+            fetchCategories();
+            resetForm();
+            return savedData;
       } catch (e) {
         throw new Error('Invalid JSON response: ' + responseText);
       }
@@ -168,13 +170,14 @@ function Category({ role = 'user' }) {
     if (window.confirm('Are you sure you want to delete this category?')) {
       fetch(`${BASE_URL}/delete/${id}`, { method: 'DELETE' })
         .then(res => {
-          if (!res.ok) throw new Error('Delete failed');
-          setCategories(prev => prev.filter(cat => cat.categoryId !== id));
-          setFilteredCategories(prev => prev.filter(cat => cat.categoryId !== id));
-        })
+        if (!res.ok) throw new Error('Delete failed');
+        setCategories(prev => prev.filter(cat => cat.categoryId !== id));
+        setFilteredCategories(prev => prev.filter(cat => cat.categoryId !== id));
+        setToast({ message: 'Category deleted', type: 'success' });
+      })
         .catch(err => {
           console.error('Delete error:', err);
-          alert('Failed to delete category. Please try again.');
+          setToast({ message: 'Failed to delete category', type: 'error' });
         });
     }
   };
@@ -200,7 +203,7 @@ function Category({ role = 'user' }) {
     })
       .then(res => {
         if (!res.ok) throw new Error('Delete failed');
-        alert('Category deleted successfully.');
+        setToast({ message: 'Category deleted', type: 'success' });
         fetchCategories();
         setShowReassignDialog(false);
         setCategoryToDelete(null);
@@ -208,7 +211,7 @@ function Category({ role = 'user' }) {
       })
       .catch(err => {
         console.error('Delete error:', err);
-        alert('Failed to delete category. Please try again.');
+        setToast({ message: 'Failed to delete category', type: 'error' });
         setShowReassignDialog(false);
         setCategoryToDelete(null);
       });
@@ -233,6 +236,7 @@ function Category({ role = 'user' }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '80vh', width: '100%' }}>
       <div style={{ background: '#232a36', borderRadius: '24px', boxShadow: '0 8px 32px rgba(33,150,243,0.13)', padding: '2em 1.5em', maxWidth: '480px', width: '100%', marginTop: '2em' }}>
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
         <header className="category-header">
           <h1 className="category-title" style={{ color: '#21cbf3', fontWeight: 800, fontSize: '2em', marginBottom: '0.5em', textAlign: 'center' }}>
             <span role="img" aria-label="folder">📁</span> My Categories
