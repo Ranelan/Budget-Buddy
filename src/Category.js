@@ -232,16 +232,6 @@ function Category({ role = 'user' }) {
   };
 
   return (
-<<<<<<< Updated upstream
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '80vh', width: '100%' }}>
-      <div style={{ background: '#232a36', borderRadius: '24px', boxShadow: '0 8px 32px rgba(33,150,243,0.13)', padding: '2em 1.5em', maxWidth: '480px', width: '100%', marginTop: '2em' }}>
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
-        <header className="category-header">
-          <h1 className="category-title" style={{ color: '#21cbf3', fontWeight: 800, fontSize: '2em', marginBottom: '0.5em', textAlign: 'center' }}>
-            <span role="img" aria-label="folder">📁</span> My Categories
-          </h1>
-          <div style={{ color: '#b0b3b8', textAlign: 'center', marginBottom: '1.5em' }}>Manage your personal categories</div>
-=======
     <div className="category-page-container">
       <div className="category-page-wrapper">
         {/* Header Section */}
@@ -265,7 +255,6 @@ function Category({ role = 'user' }) {
               {isAdmin ? 'Add Category' : 'New Category'}
             </button>
           </div>
->>>>>>> Stashed changes
         </header>
 
         {/* Filters Section */}
