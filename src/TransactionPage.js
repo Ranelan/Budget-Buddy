@@ -4,7 +4,6 @@ import "./App.css";
 const API_BASE = "http://localhost:8081/api/transactions";
 
 function TransactionPage() {
-  // State hooks at the top of the component
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -137,20 +136,13 @@ function TransactionPage() {
     }
   };
 
-  const formatDate = (dateString) => {
-    const options = { day: "2-digit", month: "short", year: "numeric" };
-    return new Date(dateString).toLocaleDateString("en-US", options);
-  };
-
-
-
   const getCategoryName = (categoryId) => {
     const category = categories.find((cat) => cat.categoryId === categoryId);
     return category ? category.name : "Uncategorized";
   };
-
-  const formatAmount = (amount, type) => type === "Income" ? `R ${amount}` : `-R ${amount}`;
-
+  const formatAmount = (amount, type) => (type === "Income" ? `R ${amount}` : `-R ${amount}`);
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <div className="transaction-page">
@@ -168,7 +160,7 @@ function TransactionPage() {
                 <input
                   type="number"
                   name="amount"
-                  placeholder="Amount (R)"
+                  placeholder="Amount"
                   value={formData.amount}
                   onChange={handleInputChange}
                   required

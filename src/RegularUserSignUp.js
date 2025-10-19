@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./App.css";
 import axios from "axios";
+import Toast from "./components/Toast";
 
 const API_URL = "http://localhost:8081/api/regularUser";
 
@@ -13,6 +14,7 @@ function RegularUserSignUp() {
   });
 
   const [message, setMessage] = useState(""); // Success/error messages
+  const [toastMessage, setToastMessage] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -27,9 +29,12 @@ function RegularUserSignUp() {
   email: formData.email,
   password: formData.password
 });
-      setMessage("User created successfully!");
       console.log("Created user:", response.data);
-      navigate("/user-dashboard");
+      // show toast and then redirect to login when toast closes
+      setToastMessage("Account created successfully. You can now log in.");
+      // If you want to automatically navigate after a fixed delay instead of waiting for onClose,
+      // you can uncomment the following line (duration in ms):
+      // setTimeout(() => navigate('/user-login'), 3000);
     } catch (error) {
       if (error.response) {
         setMessage(`Error: ${error.response.status} - ${error.response.statusText}`);
@@ -86,6 +91,15 @@ function RegularUserSignUp() {
                 <button type="submit" className="signup-btn signup-btn-blue">Sign Up</button>
               </div>
               {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
+              <Toast
+                message={toastMessage}
+                type="success"
+                duration={3000}
+                onClose={() => {
+                  setToastMessage("");
+                  navigate('/user-login');
+                }}
+              />
             </form>
           </div>
           <div className="signup-side-img">
