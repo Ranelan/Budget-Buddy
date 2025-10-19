@@ -530,9 +530,15 @@ function AnalyticsSection() {
       });
   }, []);
 
-  if (loading) return <div className="text-gray-500">Loading analytics...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (!analytics) return <div>No analytics data available.</div>;
+  if (loading)
+    return <div className="loading-state">Loading analytics...</div>;
+
+  if (error) return <div className="error-state">{error}</div>;
+
+  if (!analytics)
+    return (
+      <div className="empty-state">No analytics data available.</div>
+    );
 
   const categoryData = Object.entries(analytics.transactionsByCategory || {}).map(
     ([name, count]) => ({ name, count })
@@ -543,29 +549,43 @@ function AnalyticsSection() {
   );
 
   const renderBarChart = (data, xKey, title, color) => (
-    <div className="bg-white p-4 rounded-2xl shadow-md mb-6">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={data}
-          margin={{ top: 20, right: 20, left: 0, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="count" fill={color} radius={[6, 6, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="chart-card">
+      <h3 className="chart-title">{title}</h3>
+      <div style={{ height: "300px" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 20, right: 20, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis dataKey={xKey} stroke="#6B7280" />
+            <YAxis stroke="#6B7280" />
+            <Tooltip contentStyle={{ borderRadius: "8px" }} />
+            <Legend />
+            <Bar dataKey="count" fill={color} radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 
   return (
-    <div className="dashboard-content">
-      <h2 className="text-2xl font-bold mb-6">Analytics Overview</h2>
-      {renderBarChart(categoryData, "name", "Transactions by Category", "#6366F1")}
-      {renderBarChart(typeData, "type", "Transactions by Type", "#10B981")}
+    <div className="analytics-container">
+      <h2 className="analytics-title">📊 Analytics Overview</h2>
+      <div className="analytics-grid">
+        {renderBarChart(
+          categoryData,
+          "name",
+          "Transactions by Category",
+          "#6366F1"
+        )}
+        {renderBarChart(
+          typeData,
+          "type",
+          "Transactions by Type",
+          "#10B981"
+        )}
+      </div>
     </div>
   );
 }
