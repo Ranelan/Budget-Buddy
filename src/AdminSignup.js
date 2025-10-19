@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./App.css";
 
 
@@ -7,9 +8,12 @@ export default function AdminSignup({ onBack }) {
     userName: "",
     email: "",
     password: "",
-    adminCode: ""
+    adminCode: "",
+    userID: ""
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,29 +21,30 @@ export default function AdminSignup({ onBack }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-  const response = await fetch("http://localhost:8081/api/admin/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userName: form.userName,
-          email: form.email,
-          password: form.password,
-          adminCode: form.adminCode
-        })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        alert("Admin account created!\n" + JSON.stringify(data, null, 2));
-        onBack();
-      } else {
-        alert("Failed to create admin account.");
-      }
-    } catch (error) {
-      alert("Error: " + error);
+  e.preventDefault();
+  try {
+    const response = await fetch("http://localhost:8081/api/admin/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setMessage("Admin created successfully!");
+      console.log("Created Admin:", data);
+      localStorage.setItem("adminId", data.userID);
+      localStorage.setItem("adminName", data.userName);
+
+      navigate("/admin-dashboard");
+    } else {
+      setMessage("Failed to create admin");
     }
-  };
+  } catch (error) {
+    setMessage("Error connecting to server");
+    console.error(error);
+  }
+};
 
   return (
     <div className="signup-bg">
@@ -57,7 +62,7 @@ export default function AdminSignup({ onBack }) {
             <div className="signup-title-group">
               <span className="signup-subtitle">START FOR FREE</span>
               <h1 className="signup-title">Create new account<span className="signup-title-dot">.</span></h1>
-              <span className="signup-login-link">Already A Member? <button type="button" className="signup-link-btn" onClick={onBack}>Log In</button></span>
+              <span className="signup-login-link">Already A Member? <button type="button" className="signup-link-btn" onClick={() => navigate("/admin-login")}>Log In</button></span>
             </div>
             <form className="signup-form" onSubmit={handleSubmit}>
               <div className="signup-row">
@@ -123,6 +128,7 @@ export default function AdminSignup({ onBack }) {
               <div className="signup-btn-row">
                 <button type="submit" className="signup-btn signup-btn-blue">Create account</button>
               </div>
+              {message && <p style={{ marginTop: "1em", color: "#ffd700" }}>{message}</p>}
             </form>
           </div>
           <div className="signup-side-img">

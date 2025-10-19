@@ -1,41 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 const BASE_URL = 'http://localhost:8081/api/category';
+const USERS_URL = 'http://localhost:8081/api/admin/regular-users';
 
-function Category() {
+function Category({ role = 'user' }) {
   const [categories, setCategories] = useState([]);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterUser, setFilterUser] = useState('all');
   const [filteredCategories, setFilteredCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [newCategory, setNewCategory] = useState({ name: '', type: 'Expense', transaction: '' });
+  const [newCategory, setNewCategory] = useState({ 
+    name: '', 
+    type: 'Expense'
+  });
   const [errors, setErrors] = useState({});
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [reassignCategoryId, setReassignCategoryId] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const isAdmin = role === 'admin';
+
+  // Fetch categories
+  const fetchCategories = useCallback(() => {
+    setLoading(true);
     fetch(`${BASE_URL}/findAll`)
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+      .then(async res => {
+        const text = await res.text();
+        console.log('Raw response from /findAll:', text);
+        if (!res.ok) {
+          throw new Error('Failed to fetch: ' + text);
+        }
+        let data = [];
+        if (text && text.trim() !== '') {
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            throw new Error('Invalid JSON response: ' + text);
+          }
+        }
+        return data;
+      })
       .then(data => {
         setCategories(data);
-        setFilteredCategories(data);
+        applyFilters(data);
+        setLoading(false);
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
 
-  useEffect(() => {
-    const filtered = categories.filter(cat =>
+  // Fetch users (admin only)
+  const fetchUsers = useCallback(() => {
+    if (!isAdmin) return;
+    
+    fetch(USERS_URL)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setUsers(data))
+      .catch(err => console.error('Failed to fetch users:', err));
+  }, [isAdmin]);
+
+  // Apply filters with useCallback to avoid dependency issues
+  const applyFilters = useCallback((data) => {
+    let filtered = data.filter(cat =>
       cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cat.type.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (filterType !== 'all') {
+      filtered = filtered.filter(cat => cat.type === filterType);
+    }
+
+    if (filterUser !== 'all') {
+      filtered = filtered.filter(cat => 
+        filterUser === 'system' ? (cat.isGlobal || false) : 
+        filterUser === 'user' ? !(cat.isGlobal || false) : 
+        cat.userId === parseInt(filterUser)
+      );
+    }
+
     setFilteredCategories(filtered);
-  }, [searchTerm, categories]);
+  }, [searchTerm, filterType, filterUser]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchUsers();
+  }, [fetchCategories, fetchUsers]);
+
+  useEffect(() => {
+    applyFilters(categories);
+  }, [applyFilters, categories]);
 
   const handleSearch = (e) => setSearchTerm(e.target.value);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewCategory({ ...newCategory, [name]: value });
+    setNewCategory({ 
+      ...newCategory, 
+      [name]: value 
+    });
     if (errors[name]) setErrors({ ...errors, [name]: '' });
   };
 
@@ -53,151 +122,341 @@ function Category() {
     const method = isEditing ? 'PUT' : 'POST';
     const endpoint = isEditing ? `${BASE_URL}/update` : `${BASE_URL}/create`;
 
+    // Only send fields that your Spring Boot Category entity actually has
+    const payload = {
+      name: newCategory.name,
+      type: newCategory.type
+    };
+
+    console.log('Sending payload:', payload);
+
     fetch(endpoint, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCategory)
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
     })
-      .then(res => res.ok ? res.json() : Promise.reject('Save failed'))
-      .then(saved => {
-        if (isEditing) {
-          setCategories(categories.map(cat => cat.categoryId === saved.categoryId ? saved : cat));
-        } else {
-          setCategories([...categories, saved]);
-        }
+    .then(async (response) => {
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
+      }
+      let savedData;
+      try {
+        savedData = responseText && responseText.trim() !== '' ? JSON.parse(responseText) : {};
+        console.log('Saved successfully:', savedData);
+        alert('Category saved successfully!');
+        fetchCategories();
         resetForm();
-      })
-      .catch(err => console.error(err));
+        return savedData;
+      } catch (e) {
+        throw new Error('Invalid JSON response: ' + responseText);
+      }
+    })
+    .catch(error => {
+      console.error('Save error:', error);
+      alert('Error saving category: ' + error.message);
+    });
   };
 
+  // Delete category for users
   const deleteCategory = (id) => {
-    if (window.confirm('Delete this category?')) {
-      fetch(`${BASE_URL}/delete/${id}`)
+    if (window.confirm('Are you sure you want to delete this category?')) {
+      fetch(`${BASE_URL}/delete/${id}`, { method: 'DELETE' })
         .then(res => {
           if (!res.ok) throw new Error('Delete failed');
-          setCategories(categories.filter(cat => cat.categoryId !== id));
+          setCategories(prev => prev.filter(cat => cat.categoryId !== id));
+          setFilteredCategories(prev => prev.filter(cat => cat.categoryId !== id));
         })
-        .catch(err => console.error(err));
+        .catch(err => {
+          console.error('Delete error:', err);
+          alert('Failed to delete category. Please try again.');
+        });
     }
+  };
+
+  // Admin delete with reassignment option
+  const confirmDelete = (category) => {
+    // For now, just proceed with delete since we don't have transactionCount endpoint
+    proceedWithDelete(category.categoryId);
+  };
+
+  const proceedWithDelete = (id, reassignToId = null) => {
+    let url = `${BASE_URL}/delete/${id}`;
+    
+    if (reassignToId) {
+      url += `?reassignTo=${reassignToId}`;
+    }
+
+    fetch(url, { 
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Delete failed');
+        alert('Category deleted successfully.');
+        fetchCategories();
+        setShowReassignDialog(false);
+        setCategoryToDelete(null);
+        setReassignCategoryId('');
+      })
+      .catch(err => {
+        console.error('Delete error:', err);
+        alert('Failed to delete category. Please try again.');
+        setShowReassignDialog(false);
+        setCategoryToDelete(null);
+      });
   };
 
   const startEditing = (category) => {
     setIsEditing(true);
-    setEditingCategory(category);
     setNewCategory({
       name: category.name,
-      type: category.type,
-      transaction: category.transaction?.description || ''
+      type: category.type
     });
     setShowForm(true);
   };
 
   const resetForm = () => {
     setIsEditing(false);
-    setEditingCategory(null);
-    setNewCategory({ name: '', type: 'Expense', transaction: '' });
+    setNewCategory({ name: '', type: 'Expense' });
     setErrors({});
     setShowForm(false);
   };
 
   return (
-    <div className="category-management">
-      <header className="category-header">
-        <h1>🗂️ Categories</h1>
-        <p>Manage your income and expense categories</p>
-      </header>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '80vh', width: '100%' }}>
+      <div style={{ background: '#232a36', borderRadius: '24px', boxShadow: '0 8px 32px rgba(33,150,243,0.13)', padding: '2em 1.5em', maxWidth: '480px', width: '100%', marginTop: '2em' }}>
+        <header className="category-header">
+          <h1 className="category-title" style={{ color: '#21cbf3', fontWeight: 800, fontSize: '2em', marginBottom: '0.5em', textAlign: 'center' }}>
+            <span role="img" aria-label="folder">📁</span> My Categories
+          </h1>
+          <div style={{ color: '#b0b3b8', textAlign: 'center', marginBottom: '1.5em' }}>Manage your personal categories</div>
+        </header>
 
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search by name or type..."
-          value={searchTerm}
-          onChange={handleSearch}
-        />
-        <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Category</button>
-      </div>
-
-      <table className="category-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Transaction</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map(cat => (
-              <tr key={cat.categoryId}>
-                <td>{cat.name}</td>
-                <td>
-                  <span className={`type-badge ${cat.type.toLowerCase()}`}>
-                    {cat.type === 'Income' ? '💰' : '🛒'} {cat.type}
-                  </span>
-                </td>
-                <td>{cat.transaction?.description || '—'}</td>
-                <td>
-                  <button className="btn-edit" onClick={() => startEditing(cat)}>Edit</button>
-                  <button className="btn-delete" onClick={() => deleteCategory(cat.categoryId)}>Delete</button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr><td colSpan="4">No categories found</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      {showForm && (
-        <div className="modal-overlay">
-          <div className="category-form">
-            <h2>{isEditing ? 'Edit Category' : 'Add Category'}</h2>
-
-            <div className="form-group">
-              <label>Name:</label>
+        {isAdmin && (
+          <div className="admin-filters">
+            <div className="filter-group">
               <input
                 type="text"
-                name="name"
-                value={newCategory.name}
-                onChange={handleInputChange}
-                className={errors.name ? 'error' : ''}
+                placeholder="Search by name or type..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-              {errors.name && <span className="error-text">{errors.name}</span>}
             </div>
 
-            <div className="form-group">
-              <label>Type:</label>
-              <select
-                name="type"
-                value={newCategory.type}
-                onChange={handleInputChange}
-                className={errors.type ? 'error' : ''}
-              >
+            <div className="filter-group">
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                <option value="all">All Types</option>
                 <option value="Expense">Expense</option>
                 <option value="Income">Income</option>
               </select>
-              {errors.type && <span className="error-text">{errors.type}</span>}
             </div>
 
-            <div className="form-group">
-              <label>Transaction Description:</label>
-              <input
-                type="text"
-                name="transaction"
-                value={newCategory.transaction}
-                onChange={handleInputChange}
-                placeholder="Optional"
-              />
+            <div className="filter-group">
+              <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)}>
+                <option value="all">All Categories</option>
+                <option value="system">System Categories</option>
+                <option value="user">User Categories</option>
+                {users.map(user => (
+                  <option key={user.userID} value={user.userID}>
+                    {user.userName}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="form-actions">
-              <button className="btn-secondary" onClick={resetForm}>Cancel</button>
-              <button className="btn-primary" onClick={saveCategory}>Save</button>
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              + Add Category
+            </button>
+          </div>
+        )}
+
+        {!isAdmin && (
+          <div className="user-search">
+            <input
+              type="text"
+              placeholder="Search your categories..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              + New Category
+            </button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="loading">Loading categories...</div>
+        ) : (
+          <table className="category-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                {isAdmin && <th>Owner</th>}
+                {isAdmin && <th>Transactions</th>}
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCategories.length > 0 ? (
+                filteredCategories.map(cat => (
+                  <tr key={cat.categoryId} className={(cat.isGlobal || false) ? 'system-category' : 'user-category'}>
+                    <td>
+                      {cat.name}
+                      {isAdmin && (cat.isGlobal || false) && <span className="badge-global">System</span>}
+                    </td>
+                    <td>
+                      <span className={`type-badge ${cat.type.toLowerCase()}`}>
+                        {cat.type === 'Income' ? '💰' : '🛒'} {cat.type}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td>
+                        {(cat.isGlobal || false) ? 'System' : 
+                         users.find(u => u.userID === cat.userId)?.userName || 'Unknown User'}
+                      </td>
+                    )}
+                    {isAdmin && <td>{cat.transactionCount || 0}</td>}
+                    <td>
+                      <button className="btn-edit" onClick={() => startEditing(cat)}>
+                        Edit
+                      </button>
+                      <button 
+                        className="btn-delete" 
+                        onClick={() => isAdmin ? confirmDelete(cat) : deleteCategory(cat.categoryId)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={isAdmin ? 5 : 3} className="no-data">
+                    No categories found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+
+        {showForm && (
+          <div className="modal-overlay">
+            <div className="category-form">
+              <h2>{isEditing ? 'Edit Category' : 'Add Category'}</h2>
+
+              <div className="form-group">
+                <label>Name:</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newCategory.name}
+                  onChange={handleInputChange}
+                  className={errors.name ? 'error' : ''}
+                  placeholder="Enter category name"
+                />
+                {errors.name && <span className="error-text">{errors.name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label>Type:</label>
+                <select
+                  name="type"
+                  value={newCategory.type}
+                  onChange={handleInputChange}
+                  className={errors.type ? 'error' : ''}
+                >
+                  <option value="Expense">Expense</option>
+                  <option value="Income">Income</option>
+                </select>
+                {errors.type && <span className="error-text">{errors.type}</span>}
+              </div>
+
+              <div className="form-actions">
+                <button className="btn-secondary" onClick={resetForm}>
+                  Cancel
+                </button>
+                <button className="btn-primary" onClick={saveCategory}>
+                  {isEditing ? 'Update' : 'Create'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {isAdmin && showReassignDialog && categoryToDelete && (
+          <div className="modal-overlay">
+            <div className="reassign-dialog">
+              <h3>⚠️ Category Has Transactions</h3>
+              <p>
+                The category "<strong>{categoryToDelete.name}</strong>" has transactions assigned. 
+                Please choose what to do with them:
+              </p>
+              
+              <div className="form-group">
+                <label>Reassign transactions to:</label>
+                <select
+                  value={reassignCategoryId}
+                  onChange={(e) => setReassignCategoryId(e.target.value)}
+                  className="reassign-select"
+                >
+                  <option value="">-- Delete Transactions (Cannot be undone) --</option>
+                  <optgroup label="Same Type Categories">
+                    {categories
+                      .filter(cat => 
+                        cat.categoryId !== categoryToDelete.categoryId && 
+                        cat.type === categoryToDelete.type
+                      )
+                      .map(cat => (
+                        <option key={cat.categoryId} value={cat.categoryId}>
+                          {cat.name} {(cat.isGlobal || false) && "(System)"}
+                        </option>
+                      ))}
+                  </optgroup>
+                </select>
+                {reassignCategoryId && (
+                  <div className="reassign-warning">
+                    <small>Transactions will be moved to the selected category</small>
+                  </div>
+                )}
+                {!reassignCategoryId && (
+                  <div className="reassign-danger">
+                    <small>⚠️ All transactions in this category will be permanently deleted</small>
+                  </div>
+                )}
+              </div>
+
+              <div className="dialog-actions">
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => {
+                    setShowReassignDialog(false);
+                    setCategoryToDelete(null);
+                    setReassignCategoryId('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className={reassignCategoryId ? "btn-primary" : "btn-danger"} 
+                  onClick={() => proceedWithDelete(categoryToDelete.categoryId, reassignCategoryId)}
+                >
+                  {reassignCategoryId ? 'Reassign & Delete' : 'Delete Everything'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

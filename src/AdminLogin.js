@@ -1,14 +1,14 @@
-
 import React, { useState } from "react";
-import "./App.css";
+import { useNavigate } from 'react-router-dom';
 
-export default function AdminLogin({ onBack, setPage }) {
+export default function AdminLogin({ onBack }) {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    adminCode: ""
+    userID: ""
   });
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,16 +22,19 @@ export default function AdminLogin({ onBack, setPage }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          usernameOrEmail: form.email,
+          email: form.email,
           password: form.password
         })
       });
       if (response.ok) {
-        const data = await response.json();
-        alert("Login successful!\n" + JSON.stringify(data, null, 2));
-        if (typeof setPage === "function") {
-          setPage("adminDashboard");
-        }
+    const data = await response.json();
+    alert("Login successful!\n" + JSON.stringify(data, null, 2));
+      console.log("Successful Login:", data);
+      localStorage.setItem("adminId", data.userID);
+      localStorage.setItem("adminName", data.userName);
+
+      navigate("/admin-dashboard");
+
       } else {
         alert("Login failed. Please check your credentials.");
       }
@@ -56,7 +59,7 @@ export default function AdminLogin({ onBack, setPage }) {
             <div className="signup-title-group">
               <span className="signup-subtitle">ADMIN LOGIN</span>
               <h1 className="signup-title">Sign in<span className="signup-title-dot">.</span></h1>
-              <span className="signup-login-link">Don't have an account? <button type="button" className="signup-link-btn" onClick={onBack}>Sign Up</button></span>
+              <span className="signup-login-link">Don't have an account? <a href="/admin-signup" className="signup-link-btn">Sign Up</a></span>
             </div>
             <form className="signup-form" onSubmit={handleSubmit}>
               <input
@@ -109,11 +112,9 @@ export default function AdminLogin({ onBack, setPage }) {
                 required
               />
               <div className="signup-btn-row">
-                <button type="button" className="signup-btn signup-btn-gray" onClick={onBack}>Sign Up</button>
                 <button type="submit" className="signup-btn signup-btn-blue">Login</button>
               </div>
-            </form>
-                  <button type="button" className="back-btn" style={{ marginBottom: '16px' }} onClick={() => setPage('landing')}>Back</button>
+      </form>
           </div>
           <div className="signup-side-img">
             <div className="signup-side-img-content">
