@@ -276,9 +276,11 @@ function RecurringTransactionsSection() {
 
   if (loading) {
     return (
-      <div className="dashboard-content">
-        <h2>{'Recurring Transactions'}</h2>
-        <div className="loading">Loading your transactions...</div>
+      <div className="recurring-page-container">
+        <div className="recurring-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading your transactions...</p>
+        </div>
       </div>
     );
   }
@@ -287,235 +289,334 @@ function RecurringTransactionsSection() {
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
   return (
-    <div className="dashboard-content">
-      <h2>{'Recurring Transactions'}</h2>
-      
-      {error && (
-        <div className="error-message">
-          <strong>Error:</strong> {error}
-          <button onClick={() => setError("")} className="error-close">
-            ×
-          </button>
-        </div>
-      )}
-      
-      {success && (
-        <div className="success-message">
-          <strong>Success:</strong> {success}
-          <button onClick={() => setSuccess("")} className="error-close">
-            ×
-          </button>
-        </div>
-      )}
-
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          className="btn-add"
-          onClick={() => setShowForm(true)}
-          style={{ marginRight: '10px' }}
-        >
-          + Create Recurring Transaction
-        </button>
-        <button className="btn-refresh" onClick={refreshData}>
-          ↻ Refresh
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="modal-overlay">
-          <div className="transaction-form">
-            <h2>Add Recurring Transaction</h2>
-            
-            {/* User selection for admin only */}
-            {isAdmin && (
-              <div className="form-group">
-                <label>User: *</label>
-                <select
-                  name="userId"
-                  value={formData.userId}
-                  onChange={handleInputChange}
-                  required
-                  disabled={usersLoading}
-                >
-                  <option value="">Select User</option>
-                  {users.map(user => (
-                    <option key={user.userID || user.id} value={user.userID || user.id}>
-                      {user.userName || user.name || user.email || `User #${user.userID || user.id}`}
-                    </option>
-                  ))}
-                </select>
-                {usersLoading && <div className="loading-small">Loading users...</div>}
-              </div>
-            )}
-
-            <div className="form-group">
-              <label>Description:</label>
-              <input
-                type="text"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="e.g., Netflix Subscription, Gym Membership"
-                required
-              />
+    <div className="recurring-page-container">
+      <div className="recurring-page-wrapper">
+        {/* Header Section */}
+        <header className="recurring-page-header">
+          <div className="recurring-header-content">
+            <div className="recurring-header-icon">
+              <i className="fas fa-sync-alt"></i>
             </div>
-
-            <div className="form-group">
-              <label>Amount:</label>
-              <input
-                type="number"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Category:</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Select Category</option>
-                {categories.map(cat => (
-                  <option key={cat.categoryId} value={cat.name}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Recurrence Type:</label>
-              <select
-                name="recurrenceType"
-                value={formData.recurrenceType}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="DAILY">Daily</option>
-                <option value="WEEKLY">Weekly</option>
-                <option value="MONTHLY">Monthly</option>
-                <option value="YEARLY">Yearly</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Next Execution Date: *</label>
-              <input
-                type="date"
-                name="nextExecution"
-                value={formData.nextExecution}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-
-            <div className="form-actions">
-              <button className="btn-cancel" onClick={resetForm}>
-                Cancel
-              </button>
-              <button 
-                className="btn-save" 
-                onClick={createRecurringTransaction}
-                disabled={
-                  !formData.description || 
-                  !formData.amount || 
-                  !formData.category || 
-                  !formData.nextExecution
-                }
-              >
-                Add
-              </button>
+            <div className="recurring-header-text">
+              <h1 className="recurring-page-title">Recurring Transactions</h1>
+              <p className="recurring-page-subtitle">
+                Manage your subscriptions and automated payments
+              </p>
             </div>
           </div>
-        </div>
-      )}
-
-      <div className="transactions-table">
-        <div className="table-header">
-          <span>Description</span>
-          <span>Amount</span>
-          <span>Category</span>
-          <span>Frequency</span>
-          <span>Next Date</span>
-          <span>Status</span>
-          <span>Actions</span>
-        </div>
-        
-        {recurringTransactions.length === 0 ? (
-          <div className="no-data">
-            No recurring transactions found.{" "}
-            <button onClick={() => setShowForm(true)} className="text-link">
-              Create your first transaction
+          <div className="recurring-header-actions">
+            <button className="btn-secondary" onClick={refreshData}>
+              <i className="fas fa-sync-alt"></i>
+              Refresh
+            </button>
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              <i className="fas fa-plus"></i>
+              New Transaction
             </button>
           </div>
-        ) : (
-          recurringTransactions.map(transaction => {
-            console.log('Transaction row:', transaction); // Debug log
-            const daysInfo = getDaysUntilDue(transaction.nextExecution);
-            const displayName = getUserDisplayName(transaction);
-            
-            return (
-              <div 
-                key={transaction.recurringTransactionId}
-                className="table-row"
-              >
-                <span className="transaction-description">
-                  {transaction.description || 'No description'}
-                </span>
-                <span className="transaction-amount">
-                  {formatCurrency(transaction.amount)}
-                </span>
-                <span className="transaction-category">
-                  {transaction.category || 'Uncategorized'}
-                </span>
-                <span className="recurrence-type">
-                  {transaction.recurrenceType?.toLowerCase() || 'N/A'}
-                </span>
-                <span className="next-execution">
-                  {formatDate(transaction.nextExecution)}
-                </span>
-                <span className={`days-left ${daysInfo.status}`}>
-                  {daysInfo.status === 'overdue' && 'Overdue: '}
-                  {daysInfo.days}
-                  {typeof daysInfo.days === 'number' && ' days'}
-                  {daysInfo.status === 'today' && ' (Today)'}
-                </span>
-                <span className="actions">
-                  <button 
-                    className="btn-delete"
-                    onClick={() => deleteRecurringTransaction(transaction.recurringTransactionId)}
-                    title="Delete this recurring transaction"
-                  >
-                    Delete
-                  </button>
-                </span>
-              </div>
-            );
-          })
+        </header>
+      
+        {/* Alert Messages */}
+        {error && (
+          <div className="alert alert-error">
+            <i className="fas fa-exclamation-circle"></i>
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="alert-close">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
         )}
-      </div>
+      
+        {success && (
+          <div className="alert alert-success">
+            <i className="fas fa-check-circle"></i>
+            <span>{success}</span>
+            <button onClick={() => setSuccess("")} className="alert-close">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        )}
 
-      {recurringTransactions.length > 0 && (
-        <div className="transaction-summary">
-          <h3>Summary</h3>
-          <p>
-            Total recurring transactions: <strong>{recurringTransactions.length}</strong>
-            {' • '}
-            Estimated monthly total: <strong>{formatCurrency(recurringTransactions.reduce((total, t) => {
-              if (t.recurrenceType === 'MONTHLY') return total + (t.amount || 0);
-              if (t.recurrenceType === 'WEEKLY') return total + (t.amount || 0) * 4;
-              if (t.recurrenceType === 'YEARLY') return total + (t.amount || 0) / 12;
-              return total + (t.amount || 0) * 30; // Daily
-            }, 0))}</strong>
-          </p>
+        {/* Form Modal */}
+        {showForm && (
+          <div className="recurring-modal-overlay" onClick={(e) => {
+            if (e.target.className === 'recurring-modal-overlay') resetForm();
+          }}>
+            <div className="recurring-modal">
+              <div className="modal-header">
+                <h2>
+                  <i className="fas fa-plus-circle"></i>
+                  Add Recurring Transaction
+                </h2>
+                <button className="modal-close" onClick={resetForm}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {/* User selection for admin only */}
+                {isAdmin && (
+                  <div className="modern-form-group">
+                    <label htmlFor="userId">
+                      <i className="fas fa-user"></i>
+                      User *
+                    </label>
+                    <select
+                      id="userId"
+                      name="userId"
+                      value={formData.userId}
+                      onChange={handleInputChange}
+                      required
+                      disabled={usersLoading}
+                    >
+                      <option value="">Select User</option>
+                      {users.map(user => (
+                        <option key={user.userID || user.id} value={user.userID || user.id}>
+                          {user.userName || user.name || user.email || `User #${user.userID || user.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    {usersLoading && <div className="loading-small">Loading users...</div>}
+                  </div>
+                )}
+
+                <div className="modern-form-group">
+                  <label htmlFor="description">
+                    <i className="fas fa-align-left"></i>
+                    Description *
+                  </label>
+                  <input
+                    id="description"
+                    type="text"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Netflix Subscription, Gym Membership"
+                    required
+                  />
+                </div>
+
+                <div className="modern-form-group">
+                  <label htmlFor="amount">
+                    <i className="fas fa-money-bill-wave"></i>
+                    Amount *
+                  </label>
+                  <input
+                    id="amount"
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+
+                <div className="modern-form-group">
+                  <label htmlFor="category">
+                    <i className="fas fa-tags"></i>
+                    Category *
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(cat => (
+                      <option key={cat.categoryId} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="modern-form-group">
+                  <label htmlFor="recurrenceType">
+                    <i className="fas fa-redo-alt"></i>
+                    Recurrence Type *
+                  </label>
+                  <select
+                    id="recurrenceType"
+                    name="recurrenceType"
+                    value={formData.recurrenceType}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="DAILY">📅 Daily</option>
+                    <option value="WEEKLY">📅 Weekly</option>
+                    <option value="MONTHLY">📅 Monthly</option>
+                    <option value="YEARLY">📅 Yearly</option>
+                  </select>
+                </div>
+
+                <div className="modern-form-group">
+                  <label htmlFor="nextExecution">
+                    <i className="fas fa-calendar-alt"></i>
+                    Next Execution Date *
+                  </label>
+                  <input
+                    id="nextExecution"
+                    type="date"
+                    name="nextExecution"
+                    value={formData.nextExecution}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={resetForm}>
+                  <i className="fas fa-times"></i>
+                  Cancel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={createRecurringTransaction}
+                  disabled={
+                    !formData.description || 
+                    !formData.amount || 
+                    !formData.category || 
+                    !formData.nextExecution
+                  }
+                >
+                  <i className="fas fa-plus"></i>
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transactions Table */}
+        <div className="recurring-table-container">
+          {recurringTransactions.length === 0 ? (
+            <div className="recurring-empty-state">
+              <div className="empty-state-icon">
+                <i className="fas fa-sync-alt"></i>
+              </div>
+              <h3>No Recurring Transactions</h3>
+              <p>Set up automated transactions to track your subscriptions and recurring payments</p>
+              <button className="btn-primary" onClick={() => setShowForm(true)}>
+                <i className="fas fa-plus"></i>
+                Create Your First Transaction
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="recurring-table-wrapper">
+                <table className="recurring-modern-table">
+                  <thead>
+                    <tr>
+                      <th><i className="fas fa-align-left"></i> Description</th>
+                      <th><i className="fas fa-money-bill-wave"></i> Amount</th>
+                      <th><i className="fas fa-tags"></i> Category</th>
+                      <th><i className="fas fa-redo-alt"></i> Frequency</th>
+                      <th><i className="fas fa-calendar-alt"></i> Next Date</th>
+                      <th><i className="fas fa-clock"></i> Status</th>
+                      <th className="text-center"><i className="fas fa-cog"></i> Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recurringTransactions.map(transaction => {
+                      console.log('Transaction row:', transaction);
+                      const daysInfo = getDaysUntilDue(transaction.nextExecution);
+                      
+                      return (
+                        <tr key={transaction.recurringTransactionId} className="recurring-row">
+                          <td>
+                            <div className="transaction-description">
+                              <i className="fas fa-file-alt"></i>
+                              {transaction.description || 'No description'}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="transaction-amount">
+                              {formatCurrency(transaction.amount)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="transaction-category-badge">
+                              <i className="fas fa-tag"></i>
+                              {transaction.category || 'Uncategorized'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="frequency-badge">
+                              {transaction.recurrenceType === 'DAILY' && '📅 Daily'}
+                              {transaction.recurrenceType === 'WEEKLY' && '📅 Weekly'}
+                              {transaction.recurrenceType === 'MONTHLY' && '📅 Monthly'}
+                              {transaction.recurrenceType === 'YEARLY' && '📅 Yearly'}
+                              {!transaction.recurrenceType && 'N/A'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="next-execution-date">
+                              {formatDate(transaction.nextExecution)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`status-badge status-${daysInfo.status}`}>
+                              {daysInfo.status === 'overdue' && '⚠️ Overdue'}
+                              {daysInfo.status === 'today' && '🔔 Today'}
+                              {daysInfo.status === 'urgent' && `⏰ ${daysInfo.days} days`}
+                              {daysInfo.status === 'normal' && `✓ ${daysInfo.days} days`}
+                              {daysInfo.status === 'unknown' && 'N/A'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button 
+                                className="btn-action btn-delete"
+                                onClick={() => deleteRecurringTransaction(transaction.recurringTransactionId)}
+                                title="Delete this recurring transaction"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Summary Section */}
+              <div className="recurring-summary">
+                <div className="summary-card">
+                  <div className="summary-icon">
+                    <i className="fas fa-list"></i>
+                  </div>
+                  <div className="summary-content">
+                    <span className="summary-label">Total Transactions</span>
+                    <span className="summary-value">{recurringTransactions.length}</span>
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <div className="summary-icon">
+                    <i className="fas fa-calculator"></i>
+                  </div>
+                  <div className="summary-content">
+                    <span className="summary-label">Estimated Monthly</span>
+                    <span className="summary-value">
+                      {formatCurrency(recurringTransactions.reduce((total, t) => {
+                        if (t.recurrenceType === 'MONTHLY') return total + (t.amount || 0);
+                        if (t.recurrenceType === 'WEEKLY') return total + (t.amount || 0) * 4;
+                        if (t.recurrenceType === 'YEARLY') return total + (t.amount || 0) / 12;
+                        return total + (t.amount || 0) * 30; // Daily
+                      }, 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
