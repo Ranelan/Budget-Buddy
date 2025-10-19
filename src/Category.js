@@ -99,8 +99,6 @@ function Category({ role = 'user' }) {
     applyFilters(categories);
   }, [applyFilters, categories]);
 
-  const handleSearch = (e) => setSearchTerm(e.target.value);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewCategory({ 
@@ -234,6 +232,7 @@ function Category({ role = 'user' }) {
   };
 
   return (
+<<<<<<< Updated upstream
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '80vh', width: '100%' }}>
       <div style={{ background: '#232a36', borderRadius: '24px', boxShadow: '0 8px 32px rgba(33,150,243,0.13)', padding: '2em 1.5em', maxWidth: '480px', width: '100%', marginTop: '2em' }}>
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
@@ -242,204 +241,348 @@ function Category({ role = 'user' }) {
             <span role="img" aria-label="folder">📁</span> My Categories
           </h1>
           <div style={{ color: '#b0b3b8', textAlign: 'center', marginBottom: '1.5em' }}>Manage your personal categories</div>
+=======
+    <div className="category-page-container">
+      <div className="category-page-wrapper">
+        {/* Header Section */}
+        <header className="category-page-header">
+          <div className="category-header-content">
+            <div className="category-header-icon">
+              <i className="fas fa-tags"></i>
+            </div>
+            <div className="category-header-text">
+              <h1 className="category-page-title">
+                {isAdmin ? 'Category Management' : 'My Categories'}
+              </h1>
+              <p className="category-page-subtitle">
+                {isAdmin ? 'Manage all system and user categories' : 'Organize your expenses and income'}
+              </p>
+            </div>
+          </div>
+          <div className="category-header-actions">
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              <i className="fas fa-plus"></i>
+              {isAdmin ? 'Add Category' : 'New Category'}
+            </button>
+          </div>
+>>>>>>> Stashed changes
         </header>
 
-        {isAdmin && (
-          <div className="admin-filters">
-            <div className="filter-group">
-              <input
-                type="text"
-                placeholder="Search by name or type..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="filter-group">
-              <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-                <option value="all">All Types</option>
-                <option value="Expense">Expense</option>
-                <option value="Income">Income</option>
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)}>
-                <option value="all">All Categories</option>
-                <option value="system">System Categories</option>
-                <option value="user">User Categories</option>
-                {users.map(user => (
-                  <option key={user.userID} value={user.userID}>
-                    {user.userName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
-              + Add Category
-            </button>
-          </div>
-        )}
-
-        {!isAdmin && (
-          <div className="user-search">
-            <input
-              type="text"
-              placeholder="Search your categories..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
-              + New Category
-            </button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="loading">Loading categories...</div>
-        ) : (
-          <table className="category-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                {isAdmin && <th>Owner</th>}
-                {isAdmin && <th>Transactions</th>}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCategories.length > 0 ? (
-                filteredCategories.map(cat => (
-                  <tr key={cat.categoryId} className={(cat.isGlobal || false) ? 'system-category' : 'user-category'}>
-                    <td>
-                      {cat.name}
-                      {isAdmin && (cat.isGlobal || false) && <span className="badge-global">System</span>}
-                    </td>
-                    <td>
-                      <span className={`type-badge ${cat.type.toLowerCase()}`}>
-                        {cat.type === 'Income' ? '💰' : '🛒'} {cat.type}
-                      </span>
-                    </td>
-                    {isAdmin && (
-                      <td>
-                        {(cat.isGlobal || false) ? 'System' : 
-                         users.find(u => u.userID === cat.userId)?.userName || 'Unknown User'}
-                      </td>
-                    )}
-                    {isAdmin && <td>{cat.transactionCount || 0}</td>}
-                    <td>
-                      <button className="btn-edit" onClick={() => startEditing(cat)}>
-                        Edit
-                      </button>
-                      <button 
-                        className="btn-delete" 
-                        onClick={() => isAdmin ? confirmDelete(cat) : deleteCategory(cat.categoryId)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={isAdmin ? 5 : 3} className="no-data">
-                    No categories found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-
-        {showForm && (
-          <div className="modal-overlay">
-            <div className="category-form">
-              <h2>{isEditing ? 'Edit Category' : 'Add Category'}</h2>
-
-              <div className="form-group">
-                <label>Name:</label>
+        {/* Filters Section */}
+        <div className="category-filters-section">
+          {isAdmin && (
+            <div className="category-filters">
+              <div className="filter-group">
+                <label>
+                  <i className="fas fa-search"></i>
+                  Search
+                </label>
                 <input
                   type="text"
-                  name="name"
-                  value={newCategory.name}
-                  onChange={handleInputChange}
-                  className={errors.name ? 'error' : ''}
-                  placeholder="Enter category name"
+                  placeholder="Search by name or type..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="filter-input"
                 />
-                {errors.name && <span className="error-text">{errors.name}</span>}
               </div>
 
-              <div className="form-group">
-                <label>Type:</label>
-                <select
-                  name="type"
-                  value={newCategory.type}
-                  onChange={handleInputChange}
-                  className={errors.type ? 'error' : ''}
-                >
-                  <option value="Expense">Expense</option>
-                  <option value="Income">Income</option>
+              <div className="filter-group">
+                <label>
+                  <i className="fas fa-filter"></i>
+                  Type
+                </label>
+                <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="filter-select">
+                  <option value="all">All Types</option>
+                  <option value="Expense">💸 Expense</option>
+                  <option value="Income">💰 Income</option>
                 </select>
-                {errors.type && <span className="error-text">{errors.type}</span>}
               </div>
 
-              <div className="form-actions">
+              <div className="filter-group">
+                <label>
+                  <i className="fas fa-user"></i>
+                  Owner
+                </label>
+                <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="filter-select">
+                  <option value="all">All Categories</option>
+                  <option value="system">🔒 System Categories</option>
+                  <option value="user">👤 User Categories</option>
+                  {users.map(user => (
+                    <option key={user.userID} value={user.userID}>
+                      {user.userName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {!isAdmin && (
+            <div className="category-search">
+              <div className="search-input-wrapper">
+                <i className="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  placeholder="Search your categories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Categories Table Section */}
+        <div className="category-table-container">
+          {loading ? (
+            <div className="category-loading">
+              <div className="loading-spinner"></div>
+              <p>Loading categories...</p>
+            </div>
+          ) : filteredCategories.length > 0 ? (
+            <div className="category-table-wrapper">
+              <table className="category-modern-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <i className="fas fa-tag"></i> Name
+                    </th>
+                    <th>
+                      <i className="fas fa-list"></i> Type
+                    </th>
+                    {isAdmin && (
+                      <>
+                        <th>
+                          <i className="fas fa-user"></i> Owner
+                        </th>
+                        <th>
+                          <i className="fas fa-receipt"></i> Transactions
+                        </th>
+                      </>
+                    )}
+                    <th className="text-center">
+                      <i className="fas fa-cog"></i> Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCategories.map(cat => (
+                    <tr key={cat.categoryId} className={`category-row ${(cat.isGlobal || false) ? 'system-row' : 'user-row'}`}>
+                      <td>
+                        <div className="category-name">
+                          {cat.name}
+                          {isAdmin && (cat.isGlobal || false) && (
+                            <span className="badge-system">
+                              <i className="fas fa-lock"></i> System
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`category-type-badge ${cat.type.toLowerCase()}`}>
+                          <i className={cat.type === 'Income' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i>
+                          {cat.type}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <>
+                          <td>
+                            <span className="owner-label">
+                              {(cat.isGlobal || false) ? (
+                                <>
+                                  <i className="fas fa-cog"></i> System
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-user"></i> {users.find(u => u.userID === cat.userId)?.userName || 'Unknown'}
+                                </>
+                              )}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="transaction-count">
+                              {cat.transactionCount || 0}
+                            </span>
+                          </td>
+                        </>
+                      )}
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="btn-action btn-edit" 
+                            onClick={() => startEditing(cat)}
+                            title="Edit category"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button 
+                            className="btn-action btn-delete" 
+                            onClick={() => isAdmin ? confirmDelete(cat) : deleteCategory(cat.categoryId)}
+                            title="Delete category"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="category-empty-state">
+              <div className="empty-state-icon">
+                <i className="fas fa-tags"></i>
+              </div>
+              <h3>No Categories Found</h3>
+              <p>
+                {searchTerm || filterType !== 'all' || filterUser !== 'all'
+                  ? 'Try adjusting your filters or search terms'
+                  : 'Get started by creating your first category'}
+              </p>
+              <button className="btn-primary" onClick={() => setShowForm(true)}>
+                <i className="fas fa-plus"></i>
+                Create Category
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Category Form Modal */}
+        {showForm && (
+          <div className="category-modal-overlay" onClick={(e) => {
+            if (e.target.className === 'category-modal-overlay') resetForm();
+          }}>
+            <div className="category-modal">
+              <div className="modal-header">
+                <h2>
+                  <i className={isEditing ? 'fas fa-edit' : 'fas fa-plus'}></i>
+                  {isEditing ? 'Edit Category' : 'Create New Category'}
+                </h2>
+                <button className="modal-close" onClick={resetForm}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="modern-form-group">
+                  <label htmlFor="category-name">
+                    <i className="fas fa-tag"></i>
+                    Category Name
+                  </label>
+                  <input
+                    id="category-name"
+                    type="text"
+                    name="name"
+                    value={newCategory.name}
+                    onChange={handleInputChange}
+                    className={errors.name ? 'input-error' : ''}
+                    placeholder="e.g., Groceries, Salary"
+                  />
+                  {errors.name && <span className="error-message">{errors.name}</span>}
+                </div>
+
+                <div className="modern-form-group">
+                  <label htmlFor="category-type">
+                    <i className="fas fa-list"></i>
+                    Category Type
+                  </label>
+                  <select
+                    id="category-type"
+                    name="type"
+                    value={newCategory.type}
+                    onChange={handleInputChange}
+                    className={errors.type ? 'input-error' : ''}
+                  >
+                    <option value="Expense">💸 Expense</option>
+                    <option value="Income">💰 Income</option>
+                  </select>
+                  {errors.type && <span className="error-message">{errors.type}</span>}
+                </div>
+              </div>
+
+              <div className="modal-footer">
                 <button className="btn-secondary" onClick={resetForm}>
+                  <i className="fas fa-times"></i>
                   Cancel
                 </button>
                 <button className="btn-primary" onClick={saveCategory}>
-                  {isEditing ? 'Update' : 'Create'}
+                  <i className={isEditing ? 'fas fa-save' : 'fas fa-plus'}></i>
+                  {isEditing ? 'Update Category' : 'Create Category'}
                 </button>
               </div>
             </div>
           </div>
         )}
 
+        {/* Reassign Dialog Modal */}
         {isAdmin && showReassignDialog && categoryToDelete && (
-          <div className="modal-overlay">
-            <div className="reassign-dialog">
-              <h3>⚠️ Category Has Transactions</h3>
-              <p>
-                The category "<strong>{categoryToDelete.name}</strong>" has transactions assigned. 
-                Please choose what to do with them:
-              </p>
-              
-              <div className="form-group">
-                <label>Reassign transactions to:</label>
-                <select
-                  value={reassignCategoryId}
-                  onChange={(e) => setReassignCategoryId(e.target.value)}
-                  className="reassign-select"
-                >
-                  <option value="">-- Delete Transactions (Cannot be undone) --</option>
-                  <optgroup label="Same Type Categories">
-                    {categories
-                      .filter(cat => 
-                        cat.categoryId !== categoryToDelete.categoryId && 
-                        cat.type === categoryToDelete.type
-                      )
-                      .map(cat => (
-                        <option key={cat.categoryId} value={cat.categoryId}>
-                          {cat.name} {(cat.isGlobal || false) && "(System)"}
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
-                {reassignCategoryId && (
-                  <div className="reassign-warning">
-                    <small>Transactions will be moved to the selected category</small>
-                  </div>
-                )}
-                {!reassignCategoryId && (
-                  <div className="reassign-danger">
-                    <small>⚠️ All transactions in this category will be permanently deleted</small>
-                  </div>
-                )}
+          <div className="category-modal-overlay">
+            <div className="category-modal reassign-modal">
+              <div className="modal-header warning-header">
+                <h2>
+                  <i className="fas fa-exclamation-triangle"></i>
+                  Category Has Transactions
+                </h2>
+                <button className="modal-close" onClick={() => {
+                  setShowReassignDialog(false);
+                  setCategoryToDelete(null);
+                  setReassignCategoryId('');
+                }}>
+                  <i className="fas fa-times"></i>
+                </button>
               </div>
 
-              <div className="dialog-actions">
+              <div className="modal-body">
+                <div className="warning-message">
+                  <p>
+                    The category <strong>"{categoryToDelete.name}"</strong> has transactions assigned to it. 
+                    Please choose what to do with them:
+                  </p>
+                </div>
+                
+                <div className="modern-form-group">
+                  <label htmlFor="reassign-select">
+                    <i className="fas fa-exchange-alt"></i>
+                    Reassign Transactions To
+                  </label>
+                  <select
+                    id="reassign-select"
+                    value={reassignCategoryId}
+                    onChange={(e) => setReassignCategoryId(e.target.value)}
+                    className="reassign-select"
+                  >
+                    <option value="">⚠️ Delete All Transactions (Cannot be undone)</option>
+                    <optgroup label="Same Type Categories">
+                      {categories
+                        .filter(cat => 
+                          cat.categoryId !== categoryToDelete.categoryId && 
+                          cat.type === categoryToDelete.type
+                        )
+                        .map(cat => (
+                          <option key={cat.categoryId} value={cat.categoryId}>
+                            {cat.name} {(cat.isGlobal || false) ? "(System)" : ""}
+                          </option>
+                        ))}
+                    </optgroup>
+                  </select>
+                  
+                  {reassignCategoryId ? (
+                    <div className="info-box">
+                      <i className="fas fa-info-circle"></i>
+                      <small>Transactions will be moved to the selected category</small>
+                    </div>
+                  ) : (
+                    <div className="danger-box">
+                      <i className="fas fa-exclamation-triangle"></i>
+                      <small>All transactions in this category will be permanently deleted</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-footer">
                 <button 
                   className="btn-secondary" 
                   onClick={() => {
@@ -448,12 +591,14 @@ function Category({ role = 'user' }) {
                     setReassignCategoryId('');
                   }}
                 >
+                  <i className="fas fa-times"></i>
                   Cancel
                 </button>
                 <button 
                   className={reassignCategoryId ? "btn-primary" : "btn-danger"} 
                   onClick={() => proceedWithDelete(categoryToDelete.categoryId, reassignCategoryId)}
                 >
+                  <i className={reassignCategoryId ? 'fas fa-exchange-alt' : 'fas fa-trash'}></i>
                   {reassignCategoryId ? 'Reassign & Delete' : 'Delete Everything'}
                 </button>
               </div>
