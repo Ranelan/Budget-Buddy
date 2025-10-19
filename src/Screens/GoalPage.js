@@ -13,11 +13,25 @@ export default function GoalPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/findAll`)
-      .then(res => res.ok ? res.json() : [])
-      .then(setGoals)
-      .catch(() => setGoals([]));
+    fetchGoals();
   }, []);
+
+  // Helper to fetch goals and handle errors centrally
+  const fetchGoals = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/findAll`);
+      if (!res.ok) {
+        setGoals([]);
+        return;
+      }
+      const data = await res.json();
+      setGoals(data);
+    } catch (err) {
+      // network or CORS error
+      setGoals([]);
+      console.error('fetchGoals error', err);
+    }
+  };
 
   const handleCreate = async () => {
     // Validation: no empty fields, amounts > 0
@@ -32,16 +46,24 @@ export default function GoalPage() {
       deadLine: form.deadLine,
       regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
     };
-    const res = await fetch(`${API_BASE}/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      setMessage("Goal created!");
-      window.location.reload();
-    } else {
-      setMessage("Failed to create goal.");
+    try {
+      const res = await fetch(`${API_BASE}/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setMessage("Goal created!");
+        setShowCreateModal(false);
+        setForm({ goalName: "", targetAmount: "", currentAmount: "", deadLine: "" });
+        await fetchGoals();
+      } else {
+        const text = await res.text().catch(() => '');
+        setMessage(text || "Failed to create goal.");
+      }
+    } catch (err) {
+      console.error('handleCreate error', err);
+      setMessage('Failed to create goal: network error or server not reachable.');
     }
   };
 
@@ -72,28 +94,40 @@ export default function GoalPage() {
       deadLine: updateForm.deadLine,
       regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
     };
-    const res = await fetch(`${API_BASE}/update`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      setMessage("Goal updated!");
-      setShowUpdateModal(false);
-      window.location.reload();
-    } else {
-      setMessage("Failed to update goal.");
+    try {
+      const res = await fetch(`${API_BASE}/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setMessage("Goal updated!");
+        setShowUpdateModal(false);
+        await fetchGoals();
+      } else {
+        const text = await res.text().catch(() => '');
+        setMessage(text || "Failed to update goal.");
+      }
+    } catch (err) {
+      console.error('handleUpdateSubmit error', err);
+      setMessage('Failed to update goal: network error or server not reachable.');
     }
   };
 
   const handleDelete = async () => {
-    const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: "DELETE" });
-    if (res.ok) {
-      setMessage("Goal deleted!");
-      setShowUpdateModal(false);
-      window.location.reload();
-    } else {
-      setMessage("Failed to delete goal.");
+    try {
+      const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: "DELETE" });
+      if (res.ok) {
+        setMessage("Goal deleted!");
+        setShowUpdateModal(false);
+        await fetchGoals();
+      } else {
+        const text = await res.text().catch(() => '');
+        setMessage(text || "Failed to delete goal.");
+      }
+    } catch (err) {
+      console.error('handleDelete error', err);
+      setMessage('Failed to delete goal: network error or server not reachable.');
     }
   };
 
