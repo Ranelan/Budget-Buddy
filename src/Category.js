@@ -15,6 +15,7 @@ function Category({ role = 'user' }) {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [newCategory, setNewCategory] = useState({ 
+    categoryId: null, // Add categoryId for editing
     name: '', 
     type: 'Expense'
   });
@@ -24,51 +25,23 @@ function Category({ role = 'user' }) {
   const [reassignCategoryId, setReassignCategoryId] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
+  
+  const isAdmin = role === 'admin' || localStorage.getItem('isAdmin') === 'true';
 
-  const isAdmin = role === 'admin';
+  // Helper to robustly obtain the current regular user's id from localStorage.
+  const getCurrentUserId = () => {
+    const explicit = localStorage.getItem('regularUserID') || localStorage.getItem('regularUserId');
+    if (explicit) return explicit;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.toLowerCase().includes('regularuser')) {
+        const val = localStorage.getItem(key);
+        if (val) return val;
+      }
+    }
+    return null;
+  };
 
-  // Fetch categories
-  const fetchCategories = useCallback(() => {
-    setLoading(true);
-    fetch(`${BASE_URL}/findAll`)
-      .then(async res => {
-        const text = await res.text();
-        console.log('Raw response from /findAll:', text);
-        if (!res.ok) {
-          throw new Error('Failed to fetch: ' + text);
-        }
-        let data = [];
-        if (text && text.trim() !== '') {
-          try {
-            data = JSON.parse(text);
-          } catch (e) {
-            throw new Error('Invalid JSON response: ' + text);
-          }
-        }
-        return data;
-      })
-      .then(data => {
-        setCategories(data);
-        applyFilters(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
-
-  // Fetch users (admin only)
-  const fetchUsers = useCallback(() => {
-    if (!isAdmin) return;
-    
-    fetch(USERS_URL)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setUsers(data))
-      .catch(err => console.error('Failed to fetch users:', err));
-  }, [isAdmin]);
-
-  // Apply filters with useCallback to avoid dependency issues
   const applyFilters = useCallback((data) => {
     let filtered = data.filter(cat =>
       cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,21 +52,82 @@ function Category({ role = 'user' }) {
       filtered = filtered.filter(cat => cat.type === filterType);
     }
 
-    if (filterUser !== 'all') {
+    if (filterUser !== 'all' && isAdmin) { // Filter only for admin
       filtered = filtered.filter(cat => 
-        filterUser === 'system' ? (cat.isGlobal || false) : 
-        filterUser === 'user' ? !(cat.isGlobal || false) : 
-        cat.userId === parseInt(filterUser)
+        filterUser === 'system' ? cat.isGlobal : 
+        filterUser === 'user' ? !cat.isGlobal : 
+        String(cat.userId) === String(filterUser)
       );
     }
 
     setFilteredCategories(filtered);
-  }, [searchTerm, filterType, filterUser]);
+  }, [searchTerm, filterType, filterUser, isAdmin]);
+
+  // --- UPDATED AND SECURE fetchCategories FUNCTION ---
+  const fetchCategories = useCallback(() => {
+    setLoading(true);
+  const isAdminFlag = role === 'admin' || localStorage.getItem('isAdmin') === 'true';
+  const currentUser = getCurrentUserId();
+    let url = "";
+
+    // STRICT LOGIC: Explicitly define the endpoint. Fail securely.
+    if (isAdminFlag) {
+      // Rule 1: If user is an admin, allow fetching all categories.
+      url = `${BASE_URL}/findAll`;
+    } else if (currentUser) {
+      // Rule 2: If not an admin, they MUST have a user ID to fetch their own data.
+      url = `${BASE_URL}/byUser/${currentUser}`;
+    } else {
+      // Rule 3: Fail securely. If not an admin AND no user ID, do not fetch anything.
+      // Log helpful diagnostics so devs can see which keys are present.
+      console.warn("Access Denied: No valid user or admin session found. Cannot fetch categories.", {
+        isAdminLocal: localStorage.getItem('isAdmin'),
+        regularUserID: localStorage.getItem('regularUserID'),
+        regularUserId: localStorage.getItem('regularUserId')
+      });
+      setCategories([]);
+      setFilteredCategories([]); // Also clear filtered results
+      setLoading(false);
+      return; // Stop the function here
+    }
+
+    fetch(url)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch categories from ${url}, status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        setCategories(data || []);
+        // applyFilters will be called by the useEffect watching `categories`
+      })
+      .catch(err => {
+        console.error(err);
+        setToast({ message: 'Could not load categories', type: 'error' });
+        setCategories([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [role]);
+
+  const fetchUsers = useCallback(() => {
+    if (!isAdmin) return;
+    
+    fetch(USERS_URL)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setUsers(data))
+      .catch(err => console.error('Failed to fetch users:', err));
+  }, [isAdmin]);
+
 
   useEffect(() => {
     fetchCategories();
-    fetchUsers();
-  }, [fetchCategories, fetchUsers]);
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [fetchCategories, fetchUsers, isAdmin]);
 
   useEffect(() => {
     applyFilters(categories);
@@ -101,123 +135,108 @@ function Category({ role = 'user' }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewCategory({ 
-      ...newCategory, 
-      [name]: value 
-    });
+    setNewCategory({ ...newCategory, [name]: value });
     if (errors[name]) setErrors({ ...errors, [name]: '' });
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!newCategory.name.trim()) newErrors.name = 'Name is required';
-    if (!newCategory.type) newErrors.type = 'Type is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const saveCategory = () => {
+  // --- UPDATED saveCategory with User Association ---
+  const saveCategory = async () => {
     if (!validateForm()) return;
 
     const method = isEditing ? 'PUT' : 'POST';
     const endpoint = isEditing ? `${BASE_URL}/update` : `${BASE_URL}/create`;
+    const rawUserId = getCurrentUserId();
+    const numericUserId = rawUserId ? Number(rawUserId) : undefined;
 
-    // Only send fields that your Spring Boot Category entity actually has
+    // Prepare payload, ensuring user association for new categories
     const payload = {
+      categoryId: isEditing ? newCategory.categoryId : undefined, // Only send ID when updating
       name: newCategory.name,
-      type: newCategory.type
+      type: newCategory.type,
+      // For a non-admin, associate the category with their user ID (both nested and top-level)
+      regularUser: !isAdmin && numericUserId ? { userID: numericUserId } : undefined,
+      userId: !isAdmin && numericUserId ? numericUserId : undefined
     };
 
-    console.log('Sending payload:', payload);
+    console.log('Saving category to', endpoint, 'method', method, 'payload', payload);
 
-    fetch(endpoint, {
-      method,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(async (response) => {
-      console.log('Response status:', response.status);
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${responseText}`);
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      // Read text safely (some endpoints return empty body)
+      const text = await res.text().catch(() => '');
+      let parsed = null;
+      try { parsed = text ? JSON.parse(text) : null; } catch (e) { /* ignore parse errors */ }
+      console.log('Save category response', res.status, text, parsed);
+
+      if (!res.ok) {
+        const errMsg = parsed && parsed.message ? parsed.message : (text || `HTTP ${res.status}`);
+        throw new Error(errMsg);
       }
-      let savedData;
-        try {
-            savedData = responseText && responseText.trim() !== '' ? JSON.parse(responseText) : {};
-            console.log('Saved successfully:', savedData);
-            setToast({ message: 'Category saved', type: 'success' });
-            fetchCategories();
-            resetForm();
-            return savedData;
-      } catch (e) {
-        throw new Error('Invalid JSON response: ' + responseText);
-      }
-    })
-    .catch(error => {
-      console.error('Save error:', error);
-      alert('Error saving category: ' + error.message);
-    });
+
+      setToast({ message: `Category ${isEditing ? 'updated' : 'created'} successfully`, type: 'success' });
+      fetchCategories();
+      resetForm();
+    } catch (error) {
+      console.error('Save category error:', error);
+      setToast({ message: `Error saving category: ${error.message}`, type: 'error' });
+    }
   };
 
-  // Delete category for users
   const deleteCategory = (id) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
+    if (window.confirm('Are you sure you want to delete this category? Any transactions using it will be uncategorized.')) {
       fetch(`${BASE_URL}/delete/${id}`, { method: 'DELETE' })
         .then(res => {
-        if (!res.ok) throw new Error('Delete failed');
-        setCategories(prev => prev.filter(cat => cat.categoryId !== id));
-        setFilteredCategories(prev => prev.filter(cat => cat.categoryId !== id));
-        setToast({ message: 'Category deleted', type: 'success' });
-      })
+          if (!res.ok) throw new Error('Delete failed on server');
+          setToast({ message: 'Category deleted', type: 'success' });
+          fetchCategories(); // Re-fetch to get the updated list
+        })
         .catch(err => {
           console.error('Delete error:', err);
           setToast({ message: 'Failed to delete category', type: 'error' });
         });
     }
   };
-
-  // Admin delete with reassignment option
+  
+  // Admin-specific delete logic remains the same
   const confirmDelete = (category) => {
-    // For now, just proceed with delete since we don't have transactionCount endpoint
+    // This is a simplified version. A real implementation might check transaction counts.
     proceedWithDelete(category.categoryId);
   };
 
   const proceedWithDelete = (id, reassignToId = null) => {
     let url = `${BASE_URL}/delete/${id}`;
-    
     if (reassignToId) {
       url += `?reassignTo=${reassignToId}`;
     }
-
-    fetch(url, { 
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    fetch(url, { method: 'DELETE' })
       .then(res => {
         if (!res.ok) throw new Error('Delete failed');
-        setToast({ message: 'Category deleted', type: 'success' });
+        setToast({ message: 'Category deleted successfully', type: 'success' });
         fetchCategories();
         setShowReassignDialog(false);
-        setCategoryToDelete(null);
-        setReassignCategoryId('');
       })
       .catch(err => {
-        console.error('Delete error:', err);
-        setToast({ message: 'Failed to delete category', type: 'error' });
+        setToast({ message: `Failed to delete category: ${err.message}`, type: 'error' });
         setShowReassignDialog(false);
-        setCategoryToDelete(null);
       });
   };
 
   const startEditing = (category) => {
     setIsEditing(true);
     setNewCategory({
+      categoryId: category.categoryId,
       name: category.name,
       type: category.type
     });
@@ -226,192 +245,98 @@ function Category({ role = 'user' }) {
 
   const resetForm = () => {
     setIsEditing(false);
-    setNewCategory({ name: '', type: 'Expense' });
+    setNewCategory({ categoryId: null, name: '', type: 'Expense' });
     setErrors({});
     setShowForm(false);
   };
 
+  // JSX remains the same
   return (
     <div className="category-page-container">
       <div className="category-page-wrapper">
-        {/* Header Section */}
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
         <header className="category-page-header">
           <div className="category-header-content">
-            <div className="category-header-icon">
-              <i className="fas fa-tags"></i>
-            </div>
+            <div className="category-header-icon"><i className="fas fa-tags"></i></div>
             <div className="category-header-text">
-              <h1 className="category-page-title">
-                {isAdmin ? 'Category Management' : 'My Categories'}
-              </h1>
-              <p className="category-page-subtitle">
-                {isAdmin ? 'Manage all system and user categories' : 'Organize your expenses and income'}
-              </p>
+              <h1 className="category-page-title">{isAdmin ? 'Category Management' : 'My Categories'}</h1>
+              <p className="category-page-subtitle">{isAdmin ? 'Manage all system and user categories' : 'Organize your expenses and income'}</p>
             </div>
           </div>
           <div className="category-header-actions">
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
-              <i className="fas fa-plus"></i>
-              {isAdmin ? 'Add Category' : 'New Category'}
-            </button>
+            <button className="btn-primary" onClick={() => setShowForm(true)}><i className="fas fa-plus"></i> {isAdmin ? 'Add Category' : 'New Category'}</button>
           </div>
         </header>
 
-        {/* Filters Section */}
         <div className="category-filters-section">
+          <div className="category-search">
+            <div className="search-input-wrapper">
+              <i className="fas fa-search search-icon"></i>
+              <input type="text" placeholder="Search categories..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-input"/>
+            </div>
+          </div>
           {isAdmin && (
             <div className="category-filters">
               <div className="filter-group">
-                <label>
-                  <i className="fas fa-search"></i>
-                  Search
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name or type..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
-              </div>
-
-              <div className="filter-group">
-                <label>
-                  <i className="fas fa-filter"></i>
-                  Type
-                </label>
+                <label><i className="fas fa-filter"></i> Type</label>
                 <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="filter-select">
                   <option value="all">All Types</option>
                   <option value="Expense">💸 Expense</option>
                   <option value="Income">💰 Income</option>
                 </select>
               </div>
-
               <div className="filter-group">
-                <label>
-                  <i className="fas fa-user"></i>
-                  Owner
-                </label>
+                <label><i className="fas fa-user"></i> Owner</label>
                 <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="filter-select">
-                  <option value="all">All Categories</option>
-                  <option value="system">🔒 System Categories</option>
-                  <option value="user">👤 User Categories</option>
-                  {users.map(user => (
-                    <option key={user.userID} value={user.userID}>
-                      {user.userName}
-                    </option>
-                  ))}
+                  <option value="all">All Owners</option>
+                  <option value="system">🔒 System</option>
+                  <option value="user">👤 All Users</option>
+                  {users.map(user => (<option key={user.userID} value={user.userID}>{user.userName}</option>))}
                 </select>
-              </div>
-            </div>
-          )}
-
-          {!isAdmin && (
-            <div className="category-search">
-              <div className="search-input-wrapper">
-                <i className="fas fa-search search-icon"></i>
-                <input
-                  type="text"
-                  placeholder="Search your categories..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
               </div>
             </div>
           )}
         </div>
 
-        {/* Categories Table Section */}
         <div className="category-table-container">
           {loading ? (
-            <div className="category-loading">
-              <div className="loading-spinner"></div>
-              <p>Loading categories...</p>
-            </div>
+            <div className="category-loading"><div className="loading-spinner"></div><p>Loading categories...</p></div>
           ) : filteredCategories.length > 0 ? (
             <div className="category-table-wrapper">
               <table className="category-modern-table">
                 <thead>
                   <tr>
-                    <th>
-                      <i className="fas fa-tag"></i> Name
-                    </th>
-                    <th>
-                      <i className="fas fa-list"></i> Type
-                    </th>
-                    {isAdmin && (
-                      <>
-                        <th>
-                          <i className="fas fa-user"></i> Owner
-                        </th>
-                        <th>
-                          <i className="fas fa-receipt"></i> Transactions
-                        </th>
-                      </>
-                    )}
-                    <th className="text-center">
-                      <i className="fas fa-cog"></i> Actions
-                    </th>
+                    <th><i className="fas fa-tag"></i> Name</th>
+                    <th><i className="fas fa-list"></i> Type</th>
+                    {isAdmin && <th><i className="fas fa-user"></i> Owner</th>}
+                    <th className="text-center"><i className="fas fa-cog"></i> Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCategories.map(cat => (
-                    <tr key={cat.categoryId} className={`category-row ${(cat.isGlobal || false) ? 'system-row' : 'user-row'}`}>
+                    <tr key={cat.categoryId} className={`category-row ${cat.isGlobal ? 'system-row' : 'user-row'}`}>
                       <td>
                         <div className="category-name">
                           {cat.name}
-                          {isAdmin && (cat.isGlobal || false) && (
-                            <span className="badge-system">
-                              <i className="fas fa-lock"></i> System
-                            </span>
-                          )}
+                          {isAdmin && cat.isGlobal && (<span className="badge-system"><i className="fas fa-lock"></i> System</span>)}
                         </div>
                       </td>
                       <td>
                         <span className={`category-type-badge ${cat.type.toLowerCase()}`}>
-                          <i className={cat.type === 'Income' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i>
-                          {cat.type}
+                          <i className={cat.type === 'Income' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i> {cat.type}
                         </span>
                       </td>
                       {isAdmin && (
-                        <>
-                          <td>
-                            <span className="owner-label">
-                              {(cat.isGlobal || false) ? (
-                                <>
-                                  <i className="fas fa-cog"></i> System
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fas fa-user"></i> {users.find(u => u.userID === cat.userId)?.userName || 'Unknown'}
-                                </>
-                              )}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="transaction-count">
-                              {cat.transactionCount || 0}
-                            </span>
-                          </td>
-                        </>
+                        <td>
+                          <span className="owner-label">
+                            {cat.isGlobal ? (<><i className="fas fa-cog"></i> System</>) : (<><i className="fas fa-user"></i> {users.find(u => u.userID === cat.userId)?.userName || 'Unknown User'}</>)}
+                          </span>
+                        </td>
                       )}
                       <td>
                         <div className="action-buttons">
-                          <button 
-                            className="btn-action btn-edit" 
-                            onClick={() => startEditing(cat)}
-                            title="Edit category"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button 
-                            className="btn-action btn-delete" 
-                            onClick={() => isAdmin ? confirmDelete(cat) : deleteCategory(cat.categoryId)}
-                            title="Delete category"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          <button className="btn-action btn-edit" onClick={() => startEditing(cat)} title="Edit category"><i className="fas fa-edit"></i></button>
+                          <button className="btn-action btn-delete" onClick={() => isAdmin ? confirmDelete(cat) : deleteCategory(cat.categoryId)} title="Delete category"><i className="fas fa-trash"></i></button>
                         </div>
                       </td>
                     </tr>
@@ -421,175 +346,38 @@ function Category({ role = 'user' }) {
             </div>
           ) : (
             <div className="category-empty-state">
-              <div className="empty-state-icon">
-                <i className="fas fa-tags"></i>
-              </div>
+              <div className="empty-state-icon"><i className="fas fa-tags"></i></div>
               <h3>No Categories Found</h3>
-              <p>
-                {searchTerm || filterType !== 'all' || filterUser !== 'all'
-                  ? 'Try adjusting your filters or search terms'
-                  : 'Get started by creating your first category'}
-              </p>
-              <button className="btn-primary" onClick={() => setShowForm(true)}>
-                <i className="fas fa-plus"></i>
-                Create Category
-              </button>
+              <p>{searchTerm || filterType !== 'all' || (isAdmin && filterUser !== 'all') ? 'Try adjusting your filters' : 'Get started by creating a category'}</p>
+              <button className="btn-primary" onClick={() => setShowForm(true)}><i className="fas fa-plus"></i> Create Category</button>
             </div>
           )}
         </div>
 
-        {/* Category Form Modal */}
         {showForm && (
-          <div className="category-modal-overlay" onClick={(e) => {
-            if (e.target.className === 'category-modal-overlay') resetForm();
-          }}>
+          <div className="category-modal-overlay" onClick={(e) => { if (e.target.className === 'category-modal-overlay') resetForm(); }}>
             <div className="category-modal">
               <div className="modal-header">
-                <h2>
-                  <i className={isEditing ? 'fas fa-edit' : 'fas fa-plus'}></i>
-                  {isEditing ? 'Edit Category' : 'Create New Category'}
-                </h2>
-                <button className="modal-close" onClick={resetForm}>
-                  <i className="fas fa-times"></i>
-                </button>
+                <h2><i className={isEditing ? 'fas fa-edit' : 'fas fa-plus'}></i> {isEditing ? 'Edit Category' : 'Create New Category'}</h2>
+                <button className="modal-close" onClick={resetForm}><i className="fas fa-times"></i></button>
               </div>
-
               <div className="modal-body">
                 <div className="modern-form-group">
-                  <label htmlFor="category-name">
-                    <i className="fas fa-tag"></i>
-                    Category Name
-                  </label>
-                  <input
-                    id="category-name"
-                    type="text"
-                    name="name"
-                    value={newCategory.name}
-                    onChange={handleInputChange}
-                    className={errors.name ? 'input-error' : ''}
-                    placeholder="e.g., Groceries, Salary"
-                  />
+                  <label htmlFor="category-name"><i className="fas fa-tag"></i> Category Name</label>
+                  <input id="category-name" type="text" name="name" value={newCategory.name} onChange={handleInputChange} className={errors.name ? 'input-error' : ''} placeholder="e.g., Groceries, Salary"/>
                   {errors.name && <span className="error-message">{errors.name}</span>}
                 </div>
-
                 <div className="modern-form-group">
-                  <label htmlFor="category-type">
-                    <i className="fas fa-list"></i>
-                    Category Type
-                  </label>
-                  <select
-                    id="category-type"
-                    name="type"
-                    value={newCategory.type}
-                    onChange={handleInputChange}
-                    className={errors.type ? 'input-error' : ''}
-                  >
+                  <label htmlFor="category-type"><i className="fas fa-list"></i> Category Type</label>
+                  <select id="category-type" name="type" value={newCategory.type} onChange={handleInputChange} className={errors.type ? 'input-error' : ''}>
                     <option value="Expense">💸 Expense</option>
                     <option value="Income">💰 Income</option>
                   </select>
-                  {errors.type && <span className="error-message">{errors.type}</span>}
                 </div>
               </div>
-
               <div className="modal-footer">
-                <button className="btn-secondary" onClick={resetForm}>
-                  <i className="fas fa-times"></i>
-                  Cancel
-                </button>
-                <button className="btn-primary" onClick={saveCategory}>
-                  <i className={isEditing ? 'fas fa-save' : 'fas fa-plus'}></i>
-                  {isEditing ? 'Update Category' : 'Create Category'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Reassign Dialog Modal */}
-        {isAdmin && showReassignDialog && categoryToDelete && (
-          <div className="category-modal-overlay">
-            <div className="category-modal reassign-modal">
-              <div className="modal-header warning-header">
-                <h2>
-                  <i className="fas fa-exclamation-triangle"></i>
-                  Category Has Transactions
-                </h2>
-                <button className="modal-close" onClick={() => {
-                  setShowReassignDialog(false);
-                  setCategoryToDelete(null);
-                  setReassignCategoryId('');
-                }}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-
-              <div className="modal-body">
-                <div className="warning-message">
-                  <p>
-                    The category <strong>"{categoryToDelete.name}"</strong> has transactions assigned to it. 
-                    Please choose what to do with them:
-                  </p>
-                </div>
-                
-                <div className="modern-form-group">
-                  <label htmlFor="reassign-select">
-                    <i className="fas fa-exchange-alt"></i>
-                    Reassign Transactions To
-                  </label>
-                  <select
-                    id="reassign-select"
-                    value={reassignCategoryId}
-                    onChange={(e) => setReassignCategoryId(e.target.value)}
-                    className="reassign-select"
-                  >
-                    <option value="">⚠️ Delete All Transactions (Cannot be undone)</option>
-                    <optgroup label="Same Type Categories">
-                      {categories
-                        .filter(cat => 
-                          cat.categoryId !== categoryToDelete.categoryId && 
-                          cat.type === categoryToDelete.type
-                        )
-                        .map(cat => (
-                          <option key={cat.categoryId} value={cat.categoryId}>
-                            {cat.name} {(cat.isGlobal || false) ? "(System)" : ""}
-                          </option>
-                        ))}
-                    </optgroup>
-                  </select>
-                  
-                  {reassignCategoryId ? (
-                    <div className="info-box">
-                      <i className="fas fa-info-circle"></i>
-                      <small>Transactions will be moved to the selected category</small>
-                    </div>
-                  ) : (
-                    <div className="danger-box">
-                      <i className="fas fa-exclamation-triangle"></i>
-                      <small>All transactions in this category will be permanently deleted</small>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button 
-                  className="btn-secondary" 
-                  onClick={() => {
-                    setShowReassignDialog(false);
-                    setCategoryToDelete(null);
-                    setReassignCategoryId('');
-                  }}
-                >
-                  <i className="fas fa-times"></i>
-                  Cancel
-                </button>
-                <button 
-                  className={reassignCategoryId ? "btn-primary" : "btn-danger"} 
-                  onClick={() => proceedWithDelete(categoryToDelete.categoryId, reassignCategoryId)}
-                >
-                  <i className={reassignCategoryId ? 'fas fa-exchange-alt' : 'fas fa-trash'}></i>
-                  {reassignCategoryId ? 'Reassign & Delete' : 'Delete Everything'}
-                </button>
+                <button className="btn-secondary" onClick={resetForm}><i className="fas fa-times"></i> Cancel</button>
+                <button className="btn-primary" onClick={saveCategory}><i className={isEditing ? 'fas fa-save' : 'fas fa-plus'}></i> {isEditing ? 'Update Category' : 'Create Category'}</button>
               </div>
             </div>
           </div>

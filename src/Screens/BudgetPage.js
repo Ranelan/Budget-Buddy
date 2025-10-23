@@ -4,11 +4,11 @@ import Toast from "../components/Toast";
 const API_BASE = "http://localhost:8081/api/budget";
 
 export default function BudgetPage() {
-  // Search handler for unified search bar
+  // State management
   const [budgets, setBudgets] = useState([]);
   const [form, setForm] = useState({ month: "", year: "", limitAmount: "" });
   const [selectedId, setSelectedId] = useState("");
-  const [message, setMessage] = useState("");
+  const [message] = useState("");
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({ month: "", year: "", limitAmount: "" });
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -16,51 +16,71 @@ export default function BudgetPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
-  // Fetch all budgets
-  useEffect(() => {
-    fetch(`${API_BASE}/findAll`)
-      .then(res => res.ok ? res.json() : [])
-      .then(setBudgets)
-      .catch(() => setBudgets([]));
-  }, []);
-
-  // Create budget
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    // Validation: no empty fields, no zero limit
-    if (!form.month.trim() || !form.year.trim() || !form.limitAmount || Number(form.limitAmount) <= 0) {
-      setMessage("All fields are required and limit amount must be greater than zero.");
-      return;
+  // === STRICT REFRESH LOGIC ===
+  // Reusable helper to discover the currently-logged-in regular user's id.
+  // This mirrors the tolerant lookup used in other screens (checks both key variants
+  // and falls back to scanning for any key containing 'regularuser').
+  const getCurrentUserId = () => {
+    const explicit = localStorage.getItem("regularUserID") || localStorage.getItem("regularUserId");
+    if (explicit) return explicit;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.toLowerCase().includes('regularuser')) {
+        const val = localStorage.getItem(key);
+        if (val) return val;
+      }
     }
-    const payload = {
-      month: form.month,
-      year: form.year,
-      limitAmount: form.limitAmount,
-      regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
-    };
-    const res = await fetch(`${API_BASE}/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      setMessage("Budget created!");
-    } else {
-      setMessage("Failed to create budget.");
-    }
-  }
+    return null;
+  };
 
-  // Read budget by ID
-  const handleRead = async () => {
-    const res = await fetch(`${API_BASE}/read/${selectedId}`);
-    if (res.ok) {
+  const refreshBudgets = async () => {
+    try {
+      const isAdmin = localStorage.getItem("isAdmin") === "true";
+      const currentUser = getCurrentUserId();
+
+      let url = "";
+
+      // STRICT CHECK: Only explicitly allow findAll if truly an admin.
+      if (isAdmin) {
+        url = `${API_BASE}/findAll`;
+      } 
+      // If not admin, they MUST have a currentUser ID to see anything.
+      else if (currentUser) {
+        url = `${API_BASE}/byUser/${currentUser}`;
+      } 
+      // If neither (e.g., logged out, or weird state), show nothing. 
+      // Do NOT default to findAll.
+      else {
+        console.warn("Access denied: No valid user or admin credentials found.", {
+          isAdminLocal: localStorage.getItem("isAdmin"),
+          regularUserID: localStorage.getItem("regularUserID"),
+          regularUserId: localStorage.getItem("regularUserId")
+        });
+        setBudgets([]);
+        return;
+      }
+
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        // If the API call fails (e.g., 401 Unauthorized, 403 Forbidden), clear budgets
+        console.warn(`BudgetPage: Failed to fetch from ${url}, status: ${res.status}`);
+        setBudgets([]);
+        return;
+      }
+
       const data = await res.json();
-      setBudgets([data]);
-      setMessage("");
-    } else {
-      setMessage("Budget not found.");
+      setBudgets(data || []);
+    } catch (error) {
+      console.error("Error loading budgets:", error);
+      setBudgets([]);
     }
   };
+
+  // Fetch all budgets on initial component load
+  useEffect(() => {
+    refreshBudgets();
+  }, []);
 
   // Show update modal and prefill form
   const openUpdateModal = () => {
@@ -78,81 +98,111 @@ export default function BudgetPage() {
   // Handle update from modal
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
+    if (!updateForm.month.trim() || !updateForm.year.trim() || !updateForm.limitAmount || Number(updateForm.limitAmount) <= 0) {
+        setToastMessage("All fields are required and limit amount must be greater than zero.");
+        setToastType("error");
+        return;
+    }
+
+    // We must attach the user ID to maintain ownership if it's a regular user
+    const regularUserId = getCurrentUserId();
+    const numericUserId = regularUserId ? Number(regularUserId) : undefined;
     const payload = {
       budgetId: selectedId,
       month: updateForm.month,
       year: updateForm.year,
-      limitAmount: updateForm.limitAmount,
-      regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
+      // Ensure numeric amount is sent
+      limitAmount: Number(updateForm.limitAmount),
+      // Attach ownership in two ways: nested object and top-level id to match backend variations
+      regularUser: numericUserId ? { userID: numericUserId } : undefined,
+      userId: numericUserId || undefined
     };
+    console.log('Submitting budget update payload:', payload);
+
     const res = await fetch(`${API_BASE}/update`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+
     if (res.ok) {
-      setMessage("Budget updated!");
+      setToastMessage("Budget updated successfully!");
+      setToastType("success");
       setShowUpdateModal(false);
-      // Refresh budgets without leaving page
-      fetch(`${API_BASE}/findAll`)
-        .then(res => res.ok ? res.json() : [])
-        .then(setBudgets)
-        .catch(() => setBudgets([]));
+      refreshBudgets(); 
     } else {
-      setMessage("Failed to update budget.");
+      setToastMessage("Failed to update budget.");
+      setToastType("error");
     }
   };
 
-  // Delete budget
-  const handleDelete = async () => {
-    const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: "DELETE" });
-    if (res.ok) {
-      setMessage("Budget deleted!");
-      // Refresh budgets without leaving page
-      fetch(`${API_BASE}/findAll`)
-        .then(res => res.ok ? res.json() : [])
-        .then(setBudgets)
-        .catch(() => setBudgets([]));
-    } else {
-      setMessage("Failed to delete budget.");
+  // Handle create from modal
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.month.trim() || !form.year.trim() || !form.limitAmount || Number(form.limitAmount) <= 0) {
+      setToastMessage("All fields are required and limit amount must be greater than zero.");
+      setToastType("error");
+      return;
+    }
+
+    const regularUserId = getCurrentUserId();
+    const numericUserId = regularUserId ? Number(regularUserId) : undefined;
+    const payload = {
+      month: form.month,
+      year: form.year,
+      // Ensure numeric amount is sent
+      limitAmount: Number(form.limitAmount),
+      // Ensure the new budget is tied to the current user
+      regularUser: numericUserId ? { userID: numericUserId } : undefined,
+      userId: numericUserId || undefined
+    };
+    console.log('Submitting budget create payload:', payload);
+
+    try {
+      const res = await fetch(`${API_BASE}/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
+      console.log('Create response status:', res.status, 'body:', text, 'parsed:', json);
+      if (res.ok) {
+        setToastMessage('Budget created successfully');
+        setToastType('success');
+        setShowCreateModal(false);
+        setForm({ month: '', year: '', limitAmount: '' }); 
+        refreshBudgets();
+      } else {
+        setToastMessage('Failed to create budget');
+        setToastType('error');
+      }
+    } catch (err) {
+      console.error('Budget create error:', err);
+      setToastMessage('Failed to create budget');
+      setToastType('error');
     }
   };
 
-  // Find by month
-  const handleFindByMonth = async () => {
-    const res = await fetch(`${API_BASE}/findByMonth/${form.month}`);
+  // Handle delete from modal
+  const handleDeleteConfirm = async () => {
+    const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: 'DELETE' });
     if (res.ok) {
-      setBudgets(await res.json());
-      setMessage("");
+      setToastMessage('Budget deleted successfully');
+      setToastType('success');
+      setShowDeleteModal(false);
+      setShowUpdateModal(false); 
+      refreshBudgets();
     } else {
-      setMessage("No budgets found for month.");
-    }
-  };
-
-  // Find by year
-  const handleFindByYear = async () => {
-    const res = await fetch(`${API_BASE}/findByYear/${form.year}`);
-    if (res.ok) {
-      setBudgets(await res.json());
-      setMessage("");
-    } else {
-      setMessage("No budgets found for year.");
-    }
-  };
-
-  // Find by limit amount
-  const handleFindByLimitAmount = async () => {
-    const res = await fetch(`${API_BASE}/findByLimitAmountGreaterThan/${form.limitAmount}`);
-    if (res.ok) {
-      setBudgets(await res.json());
-      setMessage("");
-    } else {
-      setMessage("No budgets found above amount.");
+      setToastMessage('Failed to delete budget');
+      setToastType('error');
     }
   };
 
   return (
     <div className="dashboard-content">
+      <Toast message={toastMessage} type={toastType} duration={3000} onClose={() => setToastMessage("")} />
       <div className="budget-main-card">
         <div className="goal-header">
           <h1 className="budget-title">Budget Management</h1>
@@ -162,44 +212,14 @@ export default function BudgetPage() {
         </div>
         {message && <div className="budget-message">{message}</div>}
 
-        {/* Create moved to modal */}
+        <h2 className="budgets-title">Budget Overview</h2>
 
-        <h2 className="budgets-title">Budgets</h2>
         {/* Create Modal */}
         {showCreateModal && (
           <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
             <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
               <h2>Create Budget</h2>
-              <form className="budget-form" onSubmit={async (e) => {
-                e.preventDefault();
-                // call handleCreate logic but without event
-                // validation
-                if (!form.month.trim() || !form.year.trim() || !form.limitAmount || Number(form.limitAmount) <= 0) {
-                  setMessage("All fields are required and limit amount must be greater than zero.");
-                  return;
-                }
-                const payload = {
-                  month: form.month,
-                  year: form.year,
-                  limitAmount: form.limitAmount,
-                  regularUser: localStorage.getItem("regularUserId") ? { userID: localStorage.getItem("regularUserId") } : undefined
-                };
-                const res = await fetch(`${API_BASE}/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) {
-                  setMessage('Budget created!');
-                  setToastMessage('Budget created successfully');
-                  setToastType('success');
-                  setShowCreateModal(false);
-                  // clear form
-                  setForm({ month: '', year: '', limitAmount: '' });
-                  // refresh budgets
-                  fetch(`${API_BASE}/findAll`).then(res => res.ok ? res.json() : []).then(setBudgets).catch(() => setBudgets([]));
-                } else {
-                  setMessage('Failed to create budget.');
-                  setToastMessage('Failed to create budget');
-                  setToastType('error');
-                }
-              }}>
+              <form className="budget-form" onSubmit={handleCreateSubmit}>
                 <div className="form-grid-budget">
                   <input className="signup-input" placeholder="Month" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} />
                   <input className="signup-input" placeholder="Year" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} />
@@ -213,22 +233,22 @@ export default function BudgetPage() {
             </div>
           </div>
         )}
-        {/* Toast */}
-        <Toast message={toastMessage} type={toastType} duration={3000} onClose={() => setToastMessage("")} />
+
         <div className="goal-grid">
           {budgets.length === 0 ? (
             <div className="no-budgets">No budgets found.</div>
           ) : (
             budgets.map(b => {
               const target = Number(b.limitAmount) || 0;
-              const current = 0; // current spending not available here
+              // Placeholder for current spending. You'd typically fetch this separately or have it in the budget object.
+              const current = 0; 
               const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
               const remaining = Math.max(0, (target - current).toFixed(2));
               return (
                 <div key={b.budgetId} className="goal-card" onClick={() => setSelectedId(b.budgetId)}>
                   <div className="goal-card-top">
                     <div className="goal-title">{b.month} {b.year}</div>
-                    <div className="goal-amount">{target}</div>
+                    <div className="goal-amount">R{target}</div>
                   </div>
                   <div className="progress-track"><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
                   <div className="goal-meta">
@@ -246,7 +266,8 @@ export default function BudgetPage() {
             })
           )}
         </div>
-        {/* Update Modal (aligned with navbar/main content) */}
+
+        {/* Update Modal */}
         {showUpdateModal && (
           <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
             <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
@@ -259,13 +280,13 @@ export default function BudgetPage() {
                 </div>
                 <div className="modal-btn-row">
                   <button className="enhanced-btn" type="submit">Save Changes</button>
-                  <button className="btn-delete" type="button" onClick={() => setShowDeleteModal(true)}>Delete</button>
                   <button className="btn-delete" type="button" onClick={() => setShowUpdateModal(false)}>Cancel</button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
@@ -273,21 +294,7 @@ export default function BudgetPage() {
               <h2>Delete Budget</h2>
               <p>Are you sure you want to delete this budget? This action cannot be undone.</p>
               <div className="modal-btn-row" style={{ marginTop: '1rem' }}>
-                <button className="btn-delete" onClick={async () => {
-                  // call existing delete handler and then close modals and show toast
-                  const res = await fetch(`${API_BASE}/delete/${selectedId}`, { method: 'DELETE' });
-                  if (res.ok) {
-                    setToastMessage('Budget deleted');
-                    setToastType('success');
-                    setShowDeleteModal(false);
-                    setShowUpdateModal(false);
-                    // refresh budgets
-                    fetch(`${API_BASE}/findAll`).then(r => r.ok ? r.json() : []).then(setBudgets).catch(() => setBudgets([]));
-                  } else {
-                    setToastMessage('Failed to delete budget');
-                    setToastType('error');
-                  }
-                }}>Confirm Delete</button>
+                <button className="btn-delete" onClick={handleDeleteConfirm}>Confirm Delete</button>
                 <button className="enhanced-btn" onClick={() => setShowDeleteModal(false)}>Cancel</button>
               </div>
             </div>

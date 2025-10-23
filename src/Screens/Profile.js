@@ -7,7 +7,7 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ userName: "", email: "" });
   const [error, setError] = useState("");
-  const userId = localStorage.getItem("regularUserId");
+  const userId = localStorage.getItem("regularUserID");
 
   useEffect(() => {
     if (!userId) {
@@ -49,7 +49,7 @@ export default function Profile() {
   if (!user) return <div>Loading profile...</div>;
 
   const handleLogout = () => {
-    localStorage.removeItem("regularUserId");
+  localStorage.removeItem("regularUserID");
     localStorage.removeItem("regularUserName");
     window.location.href = "/";
   };

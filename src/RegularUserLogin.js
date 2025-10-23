@@ -35,10 +35,20 @@ function RegularUserLogin() {
       } else {
         localStorage.setItem("regularUserName", formData.email);
       }
-      // Store userID for profile
-      if (response.data && response.data.userID) {
-        localStorage.setItem("regularUserId", response.data.userID);
-      }
+        // Normalize storage keys: use 'regularUserID' (capital D) everywhere in the app
+        if (response.data && response.data.userID) {
+          // store as strings under both key variants to be tolerant of inconsistency elsewhere
+          // (some files use regularUserID, others use regularUserId)
+          localStorage.setItem("regularUserID", String(response.data.userID));
+          localStorage.setItem("regularUserId", String(response.data.userID));
+        }
+        // Persist admin flag if present on the returned user object
+        if (response.data && typeof response.data.isAdmin !== 'undefined') {
+          localStorage.setItem('isAdmin', response.data.isAdmin ? 'true' : 'false');
+        } else {
+          // default to false for regular user logins
+          localStorage.setItem('isAdmin', 'false');
+        }
       setTimeout(() => {
         navigate('/user-dashboard');
       }, 800);
@@ -107,7 +117,6 @@ function RegularUserLogin() {
             {message && <p className="login-message">{message}</p>}
             
             <div className="login-links">
-              <a href="#" className="forgot-password-link">Forgot your password?</a>
               <p className="signup-prompt">
                 Don't have an account? <a href="/user-signup" className="signup-link">Sign up</a>
               </p>

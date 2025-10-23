@@ -117,6 +117,8 @@ function UsersSection() {
       .catch(err => { setError("Failed to fetch users"); setLoading(false); });
   }, []);
 
+  // refreshUsers helper was defined but not used; keep available for future use
+  // eslint-disable-next-line no-unused-vars
   const refreshUsers = () => {
     setLoading(true);
     fetch("http://localhost:8081/api/admin/regular-users")
@@ -283,19 +285,19 @@ function RecurringTransactionSection() {
 
   const fetchRecurringTransactions = () => {
     setLoading(true);
-    fetch("http://localhost:8081/api/recurringTransactions/findAll")
+    // Prefer scoped endpoint for non-admins; admins will still fetch all
+    const currentUser = localStorage.getItem("regularUserID");
+    const isAdmin = localStorage.getItem("isAdmin") === "true";
+    const url = (!isAdmin && currentUser) ? `http://localhost:8081/api/recurringTransactions/byUser/${currentUser}` : "http://localhost:8081/api/recurringTransactions/findAll";
+
+    fetch(url)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch recurring transactions');
         return res.json();
       })
-      .then(data => {
-        setRecurringTransactions(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .then(data => setRecurringTransactions(data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
   };
 
   const fetchUsers = () => {
