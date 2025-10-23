@@ -36,7 +36,16 @@ function RecurringTransactionsSection() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${RECURRING_BASE_URL}/findAll`);
+      const isAdmin = localStorage.getItem("isAdmin") === "true";
+      const currentUser = localStorage.getItem("regularUserID");
+
+      // Prefer server-side per-user endpoint. Non-admins must only request by user.
+      let response;
+      if (!isAdmin && currentUser) {
+        response = await fetch(`${RECURRING_BASE_URL}/byUser/${currentUser}`);
+      } else {
+        response = await fetch(`${RECURRING_BASE_URL}/findAll`);
+      }
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
@@ -49,6 +58,10 @@ function RecurringTransactionsSection() {
           throw new Error('Invalid JSON response: ' + text);
         }
       }
+      // If not admin and we have a logged-in user, filter to only that user's transactions
+        // removed unused intermediate variables to satisfy eslint
+
+      // Non-admins requested only /byUser; admins see all via findAll.
       setRecurringTransactions(data);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -58,6 +71,7 @@ function RecurringTransactionsSection() {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const fetchUserRecurringTransactions = async () => {
     setLoading(true);
     setError("");
@@ -145,35 +159,68 @@ function RecurringTransactionsSection() {
         regularUser: {
           userID: targetUserId
         },
+        userId: Number(targetUserId),
         description: formData.description,
         amount: Number(formData.amount),
-        category: formData.category
+        category: formData.category ? { categoryId: Number(formData.category) } : null,
+        categoryId: formData.category ? Number(formData.category) : null
       };
       console.log('Payload sent to backend:', payload); // Debug log
+
       const response = await fetch(`${RECURRING_BASE_URL}/create`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify(payload)
       });
-      const createdTransaction = await response.json();
-      console.log('Created transaction from backend:', createdTransaction); // Debug log
+
+      // Handle unauthorized explicitly
+      if (response.status === 401) {
+        setError('Unauthorized. Please log in and try again.');
+        console.warn('Create returned 401 Unauthorized');
+        return;
+      }
+
+      // Read text first to avoid json() on empty body which throws
+      const text = await response.text();
+      let createdTransaction = null;
+      if (text && text.trim() !== '') {
+        try {
+          createdTransaction = JSON.parse(text);
+        } catch (e) {
+          // Not JSON
+          console.warn('Response was not valid JSON:', text);
+        }
+      }
+
+      if (!response.ok) {
+        const serverMessage = createdTransaction && createdTransaction.message ? `: ${createdTransaction.message}` : '';
+        const textSnippet = text ? ` Response body: ${text}` : '';
+        setError(`Server returned ${response.status}${serverMessage}${textSnippet}`);
+        // explicit debug output
+        console.error('Create failed', response.status);
+        console.error('Response body (raw):', text);
+        console.error('Parsed body (if JSON):', createdTransaction);
+        return;
+      }
+
+      console.log('Created transaction from backend:', createdTransaction);
       fetchAllRecurringTransactions();
       resetForm();
       setSuccess('Recurring transaction created successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Create error:', err);
-      setError(err.message);
+      setError(err.message || 'An error occurred while creating the transaction');
     }
   };
 
   const deleteRecurringTransaction = async (id) => {
     if (window.confirm('Are you sure you want to delete this recurring transaction?')) {
       try {
-        const response = await fetch(`${RECURRING_BASE_URL}/delete${id}`, { 
+        const response = await fetch(`${RECURRING_BASE_URL}/delete/${id}`, { 
           method: 'DELETE' 
         });
         if (response.status === 204 || response.ok) {
@@ -248,6 +295,7 @@ function RecurringTransactionsSection() {
     }).format(amount || 0);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const getUserDisplayName = (transaction) => {
     const userObj = transaction.regularUser || transaction.user;
     const userId = userObj?.userID || userObj?.id || transaction.userId;
@@ -428,7 +476,7 @@ function RecurringTransactionsSection() {
                   >
                     <option value="">Select Category</option>
                     {categories.map(cat => (
-                      <option key={cat.categoryId} value={cat.name}>{cat.name}</option>
+                      <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
                     ))}
                   </select>
                 </div>

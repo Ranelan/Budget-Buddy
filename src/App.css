@@ -197,7 +197,7 @@
 /* Navbar-aligned modal variant: use the same max-width as the main content and center it so it visually aligns with header */
 .modal-content.modal-aligned {
   width: calc(100% - 4rem);
-  max-width: 1100px; /* same as .goal-page */
+  max-width: 1200px; /* align modals with main card width */
 }
 
 .goal-form input, .goal-form select {
@@ -237,6 +237,13 @@
 .goal-controls .btn-edit, .goal-controls .btn-delete { padding:0.4rem 0.6rem; border-radius:8px; }
 .goal-controls .btn-edit { background: hsl(var(--primary)); color:#fff; border:none; }
 .goal-controls .btn-delete { background: hsl(var(--destructive)); color:#fff; border:none; }
+
+/* Selected goal panel highlight */
+.goal-panel.selected {
+  outline: 2px solid rgba(99,102,241,0.12);
+  box-shadow: 0 8px 30px -8px rgba(99,102,241,0.18);
+  border-color: hsl(var(--primary));
+}
 
 /* Inline Add button placement for Budget/Goal pages */
 .budget-main-card { position: relative; }
@@ -698,16 +705,6 @@ p {
 
 .btn-sm {
   padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-}
-
-/* === Professional Dashboard === */
-/* === Clean Dashboard Layout === */
-.clean-dashboard {
-  min-height: 100vh;
-  background: hsl(var(--background));
-  display: flex;
-  flex-direction: column;
 }
 
 .dashboard-main {
@@ -1362,8 +1359,8 @@ html {
 
 /* Dashboard content container: center and constrain main cards to match header width */
 .dashboard-content {
-  max-width: 1280px; /* match header/container width */
-  margin: 0.75rem auto; /* reduced vertical spacing to pull card up */
+  max-width: 1200px; /* align with .dashboard-main and recurring */
+  margin: 1.5rem auto;
   padding: 0 2rem;
 }
 
@@ -1372,22 +1369,21 @@ html {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 18px;
-  padding: 1rem 1.5rem; /* match .goal-page padding */
+  padding: 1.25rem 2rem; /* match recurring padding */
   box-shadow: var(--shadow-xl);
-  /* Match Goal page width and centering so the card visually aligns */
-  max-width: 1100px;
+  /* Align with recurring/transactions container width */
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
-  min-height: 180px; /* ensure header and controls sit near the top */
+  min-height: 140px;
   display: block;
-  align-items: flex-start;
   box-sizing: border-box;
 }
 
 /* Stronger override to ensure the budget card centers in nested dashboard layouts */
 .dashboard-content > .budget-main-card {
-  max-width: 1100px !important;
-  margin: 0.75rem auto !important;
+  max-width: 1200px !important;
+  margin: 1.5rem auto !important;
   width: 100% !important;
   display: block !important;
   box-sizing: border-box !important;
@@ -1395,7 +1391,7 @@ html {
 
 /* Fallback: ensure any nested dashboard-content variations still center the budget card */
 .dashboard-content .budget-main-card {
-  max-width: 1100px !important;
+  max-width: 1200px !important;
   margin-left: auto !important;
   margin-right: auto !important;
   width: 100% !important;

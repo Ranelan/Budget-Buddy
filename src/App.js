@@ -3,24 +3,20 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import axios from 'axios';
 import AdminDashboard from "./AdminDashboard";
+import axios from 'axios';
 import AdminSignup from "./AdminSignup";
 import AdminLogin from "./AdminLogin";
 import RegularUserSignUp from "./RegularUserSignUp";
-import RegularUserLogin from "./RegularUserLogin";
 import UserDashboard from "./UserDashboard";
 import About from "./About";
 import Contact from "./Contact";
 
 import NotFound from "./NotFound";
 
+
 // Theme context for color mode toggle
 const ThemeContext = createContext();
-
-function useTheme() {
-  return useContext(ThemeContext);
-}
 
 // Authentication context
 const AuthContext = createContext();
@@ -69,7 +65,9 @@ function AuthProvider({ children }) {
     // Clear all authentication data
     localStorage.removeItem("adminId");
     localStorage.removeItem("adminName");
+    // clear both variants to avoid stale keys
     localStorage.removeItem("regularUserId");
+    localStorage.removeItem("regularUserID");
     localStorage.removeItem("regularUserName");
     
     setIsAuthenticated(false);
@@ -176,42 +174,9 @@ function Home() {
                 <i className="fas fa-play-circle"></i>
                 See How It Works
               </button>
-            </div>
-            <div className="hero-stats fade-in" style={{ animationDelay: '0.8s' }}>
-              <div className="hero-stat">
-                <div className="hero-stat-number">10K+</div>
-                <div className="hero-stat-label">Happy Users</div>
-              </div>
-              <div className="hero-stat">
-                <div className="hero-stat-number">R2M+</div>
-                <div className="hero-stat-label">Money Saved</div>
-              </div>
-              <div className="hero-stat">
-                <div className="hero-stat-number">98%</div>
-                <div className="hero-stat-label">Satisfaction</div>
               </div>
             </div>
           </div>
-          <div className="hero-visual slide-up" style={{ animationDelay: '0.4s' }}>
-            <div className="hero-dashboard-container">
-              <img src="/hero-dashboard-C5pyZVDE.jpg" alt="Budget Buddy Dashboard" className="hero-dashboard-modern" />
-              <div className="hero-floating-cards">
-                <div className="floating-card card-1">
-                  <i className="fas fa-chart-line"></i>
-                  <span>+24% Savings</span>
-                </div>
-                <div className="floating-card card-2">
-                  <i className="fas fa-shield-alt"></i>
-                  <span>Secure & Protected</span>
-                </div>
-                <div className="floating-card card-3">
-                  <i className="fas fa-robot"></i>
-                  <span>AI Insights</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Features Section */}
@@ -331,10 +296,13 @@ function AppHeader() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isDropdownOpen]);
 
-  const handleLogout = () => {
+    const handleLogout = async () => {
     setIsDropdownOpen(false);
-    logout();
-    navigate('/');
+      // Perform client-side logout only. Clearing localStorage and notifying Auth context
+      // is sufficient for stateless/token-based auth. If you use server sessions, call
+      // the backend logout endpoint here instead.
+      localStorage.clear();
+      logout();
   };
 
   const dashboardNavItems = [
@@ -420,9 +388,13 @@ function AppHeader() {
                   <i className="fas fa-user"></i>
                   Profile
                 </Link>
-                <Link to="/settings" className="header-dropdown-item">
-                  <i className="fas fa-cog"></i>
-                  Settings
+                <Link to="/about" className="header-dropdown-item">
+                  <i className="fas fa-info-circle"></i>
+                  About
+                </Link>
+                <Link to="/contact" className="header-dropdown-item">
+                  <i className="fas fa-envelope"></i>
+                  Contact
                 </Link>
                 <div className="header-dropdown-divider"></div>
                 <button onClick={handleLogout} className="header-dropdown-item danger">
@@ -702,7 +674,6 @@ function LoginLanding() {
             )}
             
             <div className="login-links">
-              <a href="#" className="forgot-password-link">Forgot your password?</a>
               <p className="signup-prompt">
                 Don't have an account? <a href="/signup" className="signup-link">Sign up</a>
               </p>
@@ -779,20 +750,17 @@ function SignupLanding() {
           setMessage("Failed to create admin account.");
         }
       } else {
-        // Regular user signup using axios like RegularUserSignUp.js
-        const response = await axios.post("http://localhost:8081/api/regularUser/create", {
+        // Regular user signup - create account then redirect user to login
+        await axios.post("http://localhost:8081/api/regularUser/create", {
           userName: formData.userName,
           email: formData.email,
           password: formData.password
         });
 
-        // Update auth context for user
-        login('user');
-
-        setMessage("User created successfully! Redirecting...");
+        setMessage("Account created successfully. Please sign in.");
         setTimeout(() => {
           if (from) navigate(from);
-          else navigate("/user-dashboard");
+          else navigate('/login');
         }, 800);
       }
     } catch (error) {

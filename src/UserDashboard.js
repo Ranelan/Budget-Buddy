@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import BudgetPage from "./Screens/BudgetPage";
 import GoalPage from "./Screens/GoalPage";
 import Profile from "./Screens/Profile";
@@ -104,7 +104,7 @@ function HomeContent() {
 }
 
 export default function UserDashboard() {
-  const location = useLocation();
+  // location is not used in this component
 
   return (
     <div className="user-dashboard-wrapper">

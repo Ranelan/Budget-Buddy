@@ -69,8 +69,7 @@ class AIFinancialService {
       monthlyExpenses = 0,
       savingsGoals = [],
       categories = [],
-      recentTransactions = [],
-      budgetData = {}
+      recentTransactions = []
     } = userData;
 
     const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome * 100).toFixed(1) : 0;
@@ -238,13 +237,11 @@ Format as a JSON array of tip objects with 'title', 'description', and 'priority
       return 'No recent transaction data available';
     }
 
-    const categories = {};
-    let totalSpent = 0;
+  const categories = {};
 
     transactions.forEach(transaction => {
       if (transaction.type === 'expense') {
-        categories[transaction.category] = (categories[transaction.category] || 0) + transaction.amount;
-        totalSpent += transaction.amount;
+  categories[transaction.category] = (categories[transaction.category] || 0) + transaction.amount;
       }
     });
 

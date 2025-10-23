@@ -1,6 +1,7 @@
 // Custom hook for AI-powered financial features
 import { useState, useEffect, useCallback } from 'react';
 import AIFinancialService from '../services/aiService';
+import { useRef } from 'react';
 
 const useAIFinancial = () => {
   const [tips, setTips] = useState([]);
@@ -9,7 +10,9 @@ const useAIFinancial = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const aiService = new AIFinancialService();
+  const aiServiceRef = useRef(null);
+  if (!aiServiceRef.current) aiServiceRef.current = new AIFinancialService();
+  const aiService = aiServiceRef.current;
 
   // Generate financial tips based on user data
   const generateTips = useCallback(async (userData) => {
@@ -33,7 +36,7 @@ const useAIFinancial = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [aiService]);
 
   // Generate budget insights
   const generateInsights = useCallback(async (budgetData, actualSpending) => {
@@ -43,7 +46,7 @@ const useAIFinancial = () => {
     } catch (err) {
       console.error('Budget Insights Error:', err);
     }
-  }, []);
+  }, [aiService]);
 
   // Generate spending predictions
   const generatePredictions = useCallback(async (historicalData) => {
@@ -53,7 +56,7 @@ const useAIFinancial = () => {
     } catch (err) {
       console.error('Predictions Error:', err);
     }
-  }, []);
+  }, [aiService]);
 
   // Load cached tips on component mount
   useEffect(() => {

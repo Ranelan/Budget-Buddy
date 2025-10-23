@@ -32,6 +32,14 @@ function RegularUserSignUp() {
       console.log("Created user:", response.data);
       // show toast and then redirect to login when toast closes
       setToastMessage("Account created successfully. You can now log in.");
+      // If backend returned the created user, save their id locally so the UI can scope data
+      if (response.data && response.data.userID) {
+        // Ensure stored values are strings to avoid type mismatches
+        localStorage.setItem('regularUserID', String(response.data.userID));
+        localStorage.setItem('isAdmin', response.data.isAdmin ? 'true' : 'false');
+      } else {
+        localStorage.setItem('isAdmin', 'false');
+      }
       // If you want to automatically navigate after a fixed delay instead of waiting for onClose,
       // you can uncomment the following line (duration in ms):
       // setTimeout(() => navigate('/user-login'), 3000);
