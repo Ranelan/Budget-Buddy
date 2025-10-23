@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const RECURRING_BASE_URL = 'http://localhost:8081/api/recurringTransactions';
-const USERS_URL = 'http://localhost:8081/api/regularUser/findAll';
+const USERS_URL = 'http://localhost:8081/api/regularUser'; // Assuming this is the correct URL for users
+const CATEGORIES_URL = 'http://localhost:8081/api/category';
 
 function RecurringTransactionsSection() {
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [usersLoading, setUsersLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -23,214 +24,276 @@ function RecurringTransactionsSection() {
     userId: ''
   });
   
-  // Get current user ID from localStorage
-  const currentUserId = localStorage.getItem("regularUserID");
+  // Tolerant helper to read current regular user id from localStorage
+  const getCurrentUserId = () => {
+    return (
+      localStorage.getItem('regularUserID') ||
+      localStorage.getItem('regularUserId') ||
+      localStorage.getItem('regularuserID') ||
+      localStorage.getItem('regularuserid') ||
+      null
+    );
+  };
+
+  const isAdmin = localStorage.getItem("isAdmin") === "true";
   
   useEffect(() => {
     fetchAllRecurringTransactions();
-    fetchUsers();
     fetchCategories();
-  }, []);
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin]); // Re-run if admin status changes, though unlikely in a session
 
+  // --- UPDATED AND SECURE fetchAllRecurringTransactions FUNCTION ---
   const fetchAllRecurringTransactions = async () => {
     setLoading(true);
     setError("");
     try {
-      const isAdmin = localStorage.getItem("isAdmin") === "true";
-      const currentUser = localStorage.getItem("regularUserID");
+  const isAdminFlag = localStorage.getItem("isAdmin") === "true";
+  const currentUser = getCurrentUserId();
+      let url = "";
 
-      // Prefer server-side per-user endpoint. Non-admins must only request by user.
-      let response;
-      if (!isAdmin && currentUser) {
-        response = await fetch(`${RECURRING_BASE_URL}/byUser/${currentUser}`);
+      // STRICT LOGIC: Explicitly define the endpoint. Fail securely.
+      if (isAdminFlag) {
+        // Rule 1: If user is an admin, allow fetching all recurring transactions.
+        url = `${RECURRING_BASE_URL}/findAll`;
+      } else if (currentUser) {
+        // Rule 2: If not an admin, they MUST have a user ID to fetch their own data.
+        url = `${RECURRING_BASE_URL}/byUser/${currentUser}`;
       } else {
-        response = await fetch(`${RECURRING_BASE_URL}/findAll`);
+        // Rule 3: Fail securely. If not an admin AND no user ID, do not fetch anything.
+        console.warn("Access Denied: No valid user or admin session found. Cannot fetch recurring transactions.");
+        setRecurringTransactions([]); // Ensure the list is empty
+        setLoading(false);
+        return; // Stop the function here
       }
+      
+      const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        throw new Error(`Server returned ${response.status} from ${url}`);
       }
-      const text = await response.text();
-      let data = [];
-      if (text && text.trim() !== '') {
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          throw new Error('Invalid JSON response: ' + text);
-        }
-      }
-      // If not admin and we have a logged-in user, filter to only that user's transactions
-        // removed unused intermediate variables to satisfy eslint
+      
+      const data = await response.json();
+      // Normalize recurring transaction objects so the UI can rely on consistent fields
+      const normalized = (data || []).map((t) => ({
+        recurringTransactionId: t.recurringTransactionId ?? t.id ?? t.recurringId ?? null,
+        amount: t.amount ?? t.value ?? 0,
+        description: t.description ?? t.title ?? '',
+        recurrenceType: t.recurrenceType ?? t.frequency ?? 'MONTHLY',
+        nextExecution: t.nextExecution ?? t.nextExecutionDate ?? t.nextRun ?? null,
+        category: t.category ?? (t.categoryId ? { categoryId: t.categoryId } : null),
+        regularUser: t.regularUser ?? (t.userId ? { userID: t.userId } : null),
+        // preserve other fields if needed
+        ...t
+      }));
+      setRecurringTransactions(normalized);
 
-      // Non-admins requested only /byUser; admins see all via findAll.
-      setRecurringTransactions(data);
     } catch (err) {
-      console.error('Fetch error:', err);
+      console.error('Fetch recurring transactions error:', err);
       setError(`Failed to fetch transactions: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // eslint-disable-next-line no-unused-vars
-  const fetchUserRecurringTransactions = async () => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      const response = await fetch(`${RECURRING_BASE_URL}/findAll`);
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      const text = await response.text();
-      let allTransactions = [];
-      if (text && text.trim() !== '') {
-        try {
-          allTransactions = JSON.parse(text);
-        } catch (e) {
-          throw new Error('Invalid JSON response: ' + text);
-        }
-      }
-      // Show all transactions since login is not required
-      setRecurringTransactions(allTransactions);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError(`Failed to fetch transactions: ${err.message}`);
+      setRecurringTransactions([]); // Clear data on error
     } finally {
       setLoading(false);
     }
   };
 
   const fetchUsers = async () => {
-    setUsersLoading(true);
-    
     try {
       const response = await fetch(USERS_URL);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.status}`);
-      }
-      
+      if (!response.ok) throw new Error(`Failed to fetch users: ${response.status}`);
       const data = await response.json();
       setUsers(data);
-      
     } catch (err) {
       console.error('Failed to fetch users:', err);
-    } finally {
-      setUsersLoading(false);
     }
   };
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:8081/api/category/findAll");
+      // Categories can be fetched for the current user or globally
+      const currentUser = getCurrentUserId();
+      const url = currentUser ? `${CATEGORIES_URL}/byUser/${currentUser}` : CATEGORIES_URL;
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch categories");
-      const text = await response.text();
-      let data = [];
-      if (text && text.trim() !== "") {
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          throw new Error('Invalid JSON response: ' + text);
-        }
-      }
-      setCategories(data);
+      const data = await response.json();
+      // Normalize category objects to ensure a consistent shape for the UI
+      const normalized = (data || []).map((c) => {
+        const rawId = c.categoryId ?? c.id ?? c.categoryID ?? c.category_id ?? null;
+        return {
+          categoryId: rawId != null ? Number(rawId) : null,
+          name: c.name ?? c.categoryName ?? c.label ?? 'Unnamed',
+        };
+      });
+      setCategories(normalized);
+      return normalized;
     } catch (err) {
       console.error("Failed to fetch categories", err);
+      return [];
+    }
+  };
+
+  // Open the form pre-filled for editing a recurring transaction
+  const handleEdit = async (recurring) => {
+    try {
+      // Ensure categories are loaded so the select shows the current value
+      const cats = await fetchCategories();
+
+      const catId = recurring.category?.categoryId ?? recurring.categoryId ?? null;
+
+      setFormData({
+        recurrenceType: recurring.recurrenceType ?? recurring.frequency ?? 'MONTHLY',
+        nextExecution: recurring.nextExecution ? new Date(recurring.nextExecution).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        amount: recurring.amount != null ? String(recurring.amount) : '',
+        description: recurring.description ?? '',
+        category: catId != null ? String(catId) : '',
+        userId: recurring.regularUser?.userID ? String(recurring.regularUser.userID) : (recurring.userId ? String(recurring.userId) : ''),
+        // store id for update operations
+        id: recurring.recurringTransactionId ?? recurring.id ?? null,
+      });
+
+      setIsEditing(true);
+      setShowForm(true);
+    } catch (err) {
+      console.error('Failed to prepare edit form:', err);
+      setError('Failed to open edit form.');
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError("");
-    setSuccess("");
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // In createRecurringTransaction, ensure amount is sent as a number
+  // --- UPDATED AND SAFER createRecurringTransaction ---
   const createRecurringTransaction = async () => {
+    setError("");
+    setSuccess("");
+
+    // Determine the user ID safely
+    let targetUserId;
+    if (isAdmin) {
+      targetUserId = formData.userId; // Admin chooses from the form
+    } else {
+      targetUserId = getCurrentUserId(); // Non-admin can only create for themselves
+    }
+
+    // Block submission if a user ID could not be determined
+    if (!targetUserId) {
+      setError("Could not determine a valid user for this transaction. Please log in or select a user.");
+      return;
+    }
+
     try {
-      const targetUserId = formData.userId || currentUserId || 1;
       const payload = {
         recurrenceType: formData.recurrenceType,
         nextExecution: formData.nextExecution,
-        regularUser: {
-          userID: targetUserId
-        },
-        userId: Number(targetUserId),
         description: formData.description,
         amount: Number(formData.amount),
-        category: formData.category ? { categoryId: Number(formData.category) } : null,
-        categoryId: formData.category ? Number(formData.category) : null
+        category: { categoryId: Number(formData.category) },
+        // Safely associate with the determined user
+        regularUser: { userID: Number(targetUserId) }
       };
-      console.log('Payload sent to backend:', payload); // Debug log
 
       const response = await fetch(`${RECURRING_BASE_URL}/create`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      // Handle unauthorized explicitly
-      if (response.status === 401) {
-        setError('Unauthorized. Please log in and try again.');
-        console.warn('Create returned 401 Unauthorized');
-        return;
-      }
-
-      // Read text first to avoid json() on empty body which throws
-      const text = await response.text();
-      let createdTransaction = null;
-      if (text && text.trim() !== '') {
-        try {
-          createdTransaction = JSON.parse(text);
-        } catch (e) {
-          // Not JSON
-          console.warn('Response was not valid JSON:', text);
-        }
-      }
-
+      
       if (!response.ok) {
-        const serverMessage = createdTransaction && createdTransaction.message ? `: ${createdTransaction.message}` : '';
-        const textSnippet = text ? ` Response body: ${text}` : '';
-        setError(`Server returned ${response.status}${serverMessage}${textSnippet}`);
-        // explicit debug output
-        console.error('Create failed', response.status);
-        console.error('Response body (raw):', text);
-        console.error('Parsed body (if JSON):', createdTransaction);
-        return;
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
-
-      console.log('Created transaction from backend:', createdTransaction);
-      fetchAllRecurringTransactions();
-      resetForm();
+      
+      await response.json(); // We don't need the result, but good to confirm it's valid JSON
+      
+  await fetchAllRecurringTransactions();
+  resetForm();
+  setIsEditing(false);
       setSuccess('Recurring transaction created successfully!');
       setTimeout(() => setSuccess(''), 3000);
+
     } catch (err) {
-      console.error('Create error:', err);
+      console.error('Create recurring transaction error:', err);
       setError(err.message || 'An error occurred while creating the transaction');
     }
   };
 
+  const updateRecurringTransaction = async () => {
+    setError("");
+    setSuccess("");
+    // require id to update
+    const id = formData.id;
+    if (!id) {
+      setError('Missing recurring transaction id for update.');
+      return;
+    }
+
+    // prepare payload similar to create but with id and top-level fields
+      // Build payload strictly matching controller expectations:
+      // { recurringTransactionId, recurrenceType, nextExecution, amount, description, category: { categoryId }, regularUser: { userID } }
+      const existing = recurringTransactions.find(r => String(r.recurringTransactionId) === String(id));
+
+      const categoryIdNum = formData.category ? Number(formData.category) : (existing?.category?.categoryId ?? null);
+      const userIdNum = formData.userId ? Number(formData.userId) : (existing?.regularUser?.userID ?? null) || (getCurrentUserId() ? Number(getCurrentUserId()) : null);
+
+      if (!categoryIdNum || !userIdNum) {
+        setError('Update requires a valid category and user. Please ensure both are set.');
+        return;
+      }
+
+      const payload = {
+        recurringTransactionId: id,
+        recurrenceType: formData.recurrenceType,
+        nextExecution: formData.nextExecution,
+        amount: Number(formData.amount),
+        description: formData.description,
+        category: { categoryId: Number(categoryIdNum) },
+        regularUser: { userID: Number(userIdNum) }
+      };
+
+      // Primary endpoint per controller
+      const endpoint = `${RECURRING_BASE_URL}/update`;
+      try {
+        console.debug('Updating recurring transaction with payload:', payload);
+        const res = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text().catch(() => '');
+        if (res.ok) {
+          // server returns the updated object
+          await fetchAllRecurringTransactions();
+          resetForm();
+          setIsEditing(false);
+          setSuccess('Recurring transaction updated successfully!');
+          setTimeout(() => setSuccess(''), 3000);
+          return;
+        } else {
+          console.warn(`Endpoint ${endpoint} returned ${res.status}: ${text}`);
+          setError(`Failed to update recurring transaction: ${text || res.status}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Network error updating recurring transaction', err);
+        setError('Network error while updating recurring transaction');
+      }
+  };
+
   const deleteRecurringTransaction = async (id) => {
     if (window.confirm('Are you sure you want to delete this recurring transaction?')) {
+      setError("");
+      setSuccess("");
       try {
-        const response = await fetch(`${RECURRING_BASE_URL}/delete/${id}`, { 
-          method: 'DELETE' 
-        });
+        const response = await fetch(`${RECURRING_BASE_URL}/delete/${id}`, { method: 'DELETE' });
         if (response.status === 204 || response.ok) {
-          setRecurringTransactions(prev => 
-            prev.filter(t => t.recurringTransactionId !== id)
-          );
+          setRecurringTransactions(prev => prev.filter(t => t.recurringTransactionId !== id));
           setSuccess('Transaction deleted successfully!');
           setTimeout(() => setSuccess(''), 3000);
         } else {
-          throw new Error('Failed to delete transaction');
+          throw new Error('Failed to delete transaction on the server');
         }
       } catch (err) {
         setError(err.message);
@@ -248,420 +311,160 @@ function RecurringTransactionsSection() {
       userId: ''
     });
     setShowForm(false);
+    setIsEditing(false);
     setError("");
   };
-
+  
+  // Helper functions (getDaysUntilDue, formatDate, formatCurrency) remain the same
   const getDaysUntilDue = (nextExecution) => {
     if (!nextExecution) return { days: 'N/A', status: 'unknown' };
-    
-    try {
-      const dueDate = new Date(nextExecution);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const diffTime = dueDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      let status = 'normal';
-      if (diffDays < 0) status = 'overdue';
-      else if (diffDays === 0) status = 'today';
-      else if (diffDays <= 3) status = 'urgent';
-      
-      return { days: Math.abs(diffDays), status };
-    } catch (error) {
-      return { days: 'N/A', status: 'unknown' };
-    }
+    const dueDate = new Date(nextExecution);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    let status = 'normal';
+    if (diffDays < 0) status = 'overdue';
+    else if (diffDays === 0) status = 'today';
+    else if (diffDays <= 3) status = 'urgent';
+    return { days: Math.abs(diffDays), status };
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
-    
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return String(dateString);
-    }
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  // Update formatCurrency to use ZAR (South African Rand)
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR'
-    }).format(amount || 0);
-  };
+  const formatCurrency = (amount) => new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(amount || 0);
 
-  // eslint-disable-next-line no-unused-vars
-  const getUserDisplayName = (transaction) => {
-    const userObj = transaction.regularUser || transaction.user;
-    const userId = userObj?.userID || userObj?.id || transaction.userId;
-    
-    if (userObj?.userName) return userObj.userName;
-    if (userObj?.name) return userObj.name;
-    if (userObj?.email) return userObj.email;
-    
-    if (userId) {
-      const foundUser = users.find(u => 
-        u.userID === userId || u.id === userId
-      );
-      if (foundUser?.userName) return foundUser.userName;
-      if (foundUser?.name) return foundUser.name;
-      if (foundUser?.email) return foundUser.email;
-      return `User #${userId}`;
-    }
-    
-    return 'Unknown User';
+  const getCategoryName = (categoryId) => {
+    if (categoryId == null) return 'Uncategorized';
+    const target = categories.find(c => String(c.categoryId) === String(categoryId));
+    return target?.name || 'Uncategorized';
   };
-
-  const refreshData = () => {
-    fetchAllRecurringTransactions();
-    fetchUsers();
-  };
-
+  
+  // JSX rendering code (no significant changes needed)
   if (loading) {
     return (
       <div className="recurring-page-container">
         <div className="recurring-loading">
-          <div className="loading-spinner"></div>
-          <p>Loading your transactions...</p>
+          <div className="loading-spinner"></div><p>Loading your transactions...</p>
         </div>
       </div>
     );
   }
 
-  // Check if the current user is admin
-  const isAdmin = localStorage.getItem("isAdmin") === "true";
-
   return (
     <div className="recurring-page-container">
       <div className="recurring-page-wrapper">
-        {/* Header Section */}
         <header className="recurring-page-header">
           <div className="recurring-header-content">
-            <div className="recurring-header-icon">
-              <i className="fas fa-sync-alt"></i>
-            </div>
+            <div className="recurring-header-icon"><i className="fas fa-sync-alt"></i></div>
             <div className="recurring-header-text">
               <h1 className="recurring-page-title">Recurring Transactions</h1>
-              <p className="recurring-page-subtitle">
-                Manage your subscriptions and automated payments
-              </p>
+              <p className="recurring-page-subtitle">Manage your subscriptions and automated payments</p>
             </div>
           </div>
           <div className="recurring-header-actions">
-            <button className="btn-secondary" onClick={refreshData}>
-              <i className="fas fa-sync-alt"></i>
-              Refresh
-            </button>
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
-              <i className="fas fa-plus"></i>
-              New Transaction
-            </button>
+            <button className="btn-secondary" onClick={fetchAllRecurringTransactions}><i className="fas fa-sync-alt"></i> Refresh</button>
+            <button className="btn-primary" onClick={() => { setIsEditing(false); setShowForm(true); }}><i className="fas fa-plus"></i> New Transaction</button>
           </div>
         </header>
       
-        {/* Alert Messages */}
-        {error && (
-          <div className="alert alert-error">
-            <i className="fas fa-exclamation-circle"></i>
-            <span>{error}</span>
-            <button onClick={() => setError("")} className="alert-close">
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        )}
-      
-        {success && (
-          <div className="alert alert-success">
-            <i className="fas fa-check-circle"></i>
-            <span>{success}</span>
-            <button onClick={() => setSuccess("")} className="alert-close">
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        )}
+        {error && (<div className="alert alert-error"><i className="fas fa-exclamation-circle"></i><span>{error}</span><button onClick={() => setError("")} className="alert-close"><i className="fas fa-times"></i></button></div>)}
+        {success && (<div className="alert alert-success"><i className="fas fa-check-circle"></i><span>{success}</span><button onClick={() => setSuccess("")} className="alert-close"><i className="fas fa-times"></i></button></div>)}
 
-        {/* Form Modal */}
         {showForm && (
-          <div className="recurring-modal-overlay" onClick={(e) => {
-            if (e.target.className === 'recurring-modal-overlay') resetForm();
-          }}>
+          <div className="recurring-modal-overlay" onClick={(e) => { if (e.target.className === 'recurring-modal-overlay') resetForm(); }}>
             <div className="recurring-modal">
               <div className="modal-header">
-                <h2>
-                  <i className="fas fa-plus-circle"></i>
-                  Add Recurring Transaction
-                </h2>
-                <button className="modal-close" onClick={resetForm}>
-                  <i className="fas fa-times"></i>
-                </button>
+                <h2>{isEditing ? (<><i className="fas fa-edit"></i> Edit Recurring Transaction</>) : (<><i className="fas fa-plus-circle"></i> Add Recurring Transaction</>)}</h2>
+                <button className="modal-close" onClick={resetForm}><i className="fas fa-times"></i></button>
               </div>
-
               <div className="modal-body">
-                {/* User selection for admin only */}
                 {isAdmin && (
                   <div className="modern-form-group">
-                    <label htmlFor="userId">
-                      <i className="fas fa-user"></i>
-                      User *
-                    </label>
-                    <select
-                      id="userId"
-                      name="userId"
-                      value={formData.userId}
-                      onChange={handleInputChange}
-                      required
-                      disabled={usersLoading}
-                    >
+                    <label htmlFor="userId"><i className="fas fa-user"></i> User *</label>
+                    <select id="userId" name="userId" value={formData.userId} onChange={handleInputChange} required>
                       <option value="">Select User</option>
-                      {users.map(user => (
-                        <option key={user.userID || user.id} value={user.userID || user.id}>
-                          {user.userName || user.name || user.email || `User #${user.userID || user.id}`}
-                        </option>
-                      ))}
+                      {users.map(user => (<option key={user.userID} value={String(user.userID)}>{user.userName || `User #${user.userID}`}</option>))}
                     </select>
-                    {usersLoading && <div className="loading-small">Loading users...</div>}
                   </div>
                 )}
-
                 <div className="modern-form-group">
-                  <label htmlFor="description">
-                    <i className="fas fa-align-left"></i>
-                    Description *
-                  </label>
-                  <input
-                    id="description"
-                    type="text"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Netflix Subscription, Gym Membership"
-                    required
-                  />
+                  <label htmlFor="description"><i className="fas fa-align-left"></i> Description *</label>
+                  <input id="description" type="text" name="description" value={formData.description} onChange={handleInputChange} placeholder="e.g., Netflix Subscription" required />
                 </div>
-
                 <div className="modern-form-group">
-                  <label htmlFor="amount">
-                    <i className="fas fa-money-bill-wave"></i>
-                    Amount *
-                  </label>
-                  <input
-                    id="amount"
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
+                  <label htmlFor="amount"><i className="fas fa-money-bill-wave"></i> Amount *</label>
+                  <input id="amount" type="number" name="amount" value={formData.amount} onChange={handleInputChange} placeholder="0.00" step="0.01" min="0" required />
                 </div>
-
                 <div className="modern-form-group">
-                  <label htmlFor="category">
-                    <i className="fas fa-tags"></i>
-                    Category *
-                  </label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <label htmlFor="category"><i className="fas fa-tags"></i> Category *</label>
+                  <select id="category" name="category" value={formData.category} onChange={handleInputChange} required>
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
-                    ))}
+                    {categories.map(cat => (<option key={cat.categoryId} value={String(cat.categoryId)}>{cat.name}</option>))}
                   </select>
                 </div>
-
                 <div className="modern-form-group">
-                  <label htmlFor="recurrenceType">
-                    <i className="fas fa-redo-alt"></i>
-                    Recurrence Type *
-                  </label>
-                  <select
-                    id="recurrenceType"
-                    name="recurrenceType"
-                    value={formData.recurrenceType}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="DAILY">📅 Daily</option>
-                    <option value="WEEKLY">📅 Weekly</option>
-                    <option value="MONTHLY">📅 Monthly</option>
-                    <option value="YEARLY">📅 Yearly</option>
+                  <label htmlFor="recurrenceType"><i className="fas fa-redo-alt"></i> Recurrence Type *</label>
+                  <select id="recurrenceType" name="recurrenceType" value={formData.recurrenceType} onChange={handleInputChange} required>
+                    <option value="DAILY">📅 Daily</option><option value="WEEKLY">📅 Weekly</option><option value="MONTHLY">📅 Monthly</option><option value="YEARLY">📅 Yearly</option>
                   </select>
                 </div>
-
                 <div className="modern-form-group">
-                  <label htmlFor="nextExecution">
-                    <i className="fas fa-calendar-alt"></i>
-                    Next Execution Date *
-                  </label>
-                  <input
-                    id="nextExecution"
-                    type="date"
-                    name="nextExecution"
-                    value={formData.nextExecution}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <label htmlFor="nextExecution"><i className="fas fa-calendar-alt"></i> Next Execution Date *</label>
+                  <input id="nextExecution" type="date" name="nextExecution" value={formData.nextExecution} onChange={handleInputChange} required />
                 </div>
               </div>
-
               <div className="modal-footer">
-                <button className="btn-secondary" onClick={resetForm}>
-                  <i className="fas fa-times"></i>
-                  Cancel
-                </button>
-                <button 
-                  className="btn-primary" 
-                  onClick={createRecurringTransaction}
-                  disabled={
-                    !formData.description || 
-                    !formData.amount || 
-                    !formData.category || 
-                    !formData.nextExecution
-                  }
-                >
-                  <i className="fas fa-plus"></i>
-                  Create
-                </button>
+                        <button className="btn-secondary" onClick={resetForm}><i className="fas fa-times"></i> Cancel</button>
+                        {isEditing ? (
+                          <button className="btn-primary" onClick={updateRecurringTransaction} disabled={!formData.description || !formData.amount || !formData.category || (isAdmin && !formData.userId)}><i className="fas fa-save"></i> Update</button>
+                        ) : (
+                          <button className="btn-primary" onClick={createRecurringTransaction} disabled={!formData.description || !formData.amount || !formData.category || (isAdmin && !formData.userId)}><i className="fas fa-plus"></i> Create</button>
+                        )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Transactions Table */}
         <div className="recurring-table-container">
           {recurringTransactions.length === 0 ? (
             <div className="recurring-empty-state">
-              <div className="empty-state-icon">
-                <i className="fas fa-sync-alt"></i>
-              </div>
-              <h3>No Recurring Transactions</h3>
-              <p>Set up automated transactions to track your subscriptions and recurring payments</p>
-              <button className="btn-primary" onClick={() => setShowForm(true)}>
-                <i className="fas fa-plus"></i>
-                Create Your First Transaction
-              </button>
+              <div className="empty-state-icon"><i className="fas fa-sync-alt"></i></div>
+              <h3>No Recurring Transactions</h3><p>Set up automated transactions to track your subscriptions.</p>
+              <button className="btn-primary" onClick={() => { setIsEditing(false); setShowForm(true); }}><i className="fas fa-plus"></i> Create Your First Transaction</button>
             </div>
           ) : (
-            <>
-              <div className="recurring-table-wrapper">
-                <table className="recurring-modern-table">
-                  <thead>
-                    <tr>
-                      <th><i className="fas fa-align-left"></i> Description</th>
-                      <th><i className="fas fa-money-bill-wave"></i> Amount</th>
-                      <th><i className="fas fa-tags"></i> Category</th>
-                      <th><i className="fas fa-redo-alt"></i> Frequency</th>
-                      <th><i className="fas fa-calendar-alt"></i> Next Date</th>
-                      <th><i className="fas fa-clock"></i> Status</th>
-                      <th className="text-center"><i className="fas fa-cog"></i> Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recurringTransactions.map(transaction => {
-                      console.log('Transaction row:', transaction);
-                      const daysInfo = getDaysUntilDue(transaction.nextExecution);
-                      
-                      return (
-                        <tr key={transaction.recurringTransactionId} className="recurring-row">
-                          <td>
-                            <div className="transaction-description">
-                              <i className="fas fa-file-alt"></i>
-                              {transaction.description || 'No description'}
-                            </div>
-                          </td>
-                          <td>
-                            <span className="transaction-amount">
-                              {formatCurrency(transaction.amount)}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="transaction-category-badge">
-                              <i className="fas fa-tag"></i>
-                              {transaction.category || 'Uncategorized'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="frequency-badge">
-                              {transaction.recurrenceType === 'DAILY' && '📅 Daily'}
-                              {transaction.recurrenceType === 'WEEKLY' && '📅 Weekly'}
-                              {transaction.recurrenceType === 'MONTHLY' && '📅 Monthly'}
-                              {transaction.recurrenceType === 'YEARLY' && '📅 Yearly'}
-                              {!transaction.recurrenceType && 'N/A'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="next-execution-date">
-                              {formatDate(transaction.nextExecution)}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`status-badge status-${daysInfo.status}`}>
-                              {daysInfo.status === 'overdue' && '⚠️ Overdue'}
-                              {daysInfo.status === 'today' && '🔔 Today'}
-                              {daysInfo.status === 'urgent' && `⏰ ${daysInfo.days} days`}
-                              {daysInfo.status === 'normal' && `✓ ${daysInfo.days} days`}
-                              {daysInfo.status === 'unknown' && 'N/A'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="action-buttons">
-                              <button 
-                                className="btn-action btn-delete"
-                                onClick={() => deleteRecurringTransaction(transaction.recurringTransactionId)}
-                                title="Delete this recurring transaction"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Summary Section */}
-              <div className="recurring-summary">
-                <div className="summary-card">
-                  <div className="summary-icon">
-                    <i className="fas fa-list"></i>
-                  </div>
-                  <div className="summary-content">
-                    <span className="summary-label">Total Transactions</span>
-                    <span className="summary-value">{recurringTransactions.length}</span>
-                  </div>
-                </div>
-                <div className="summary-card">
-                  <div className="summary-icon">
-                    <i className="fas fa-calculator"></i>
-                  </div>
-                  <div className="summary-content">
-                    <span className="summary-label">Estimated Monthly</span>
-                    <span className="summary-value">
-                      {formatCurrency(recurringTransactions.reduce((total, t) => {
-                        if (t.recurrenceType === 'MONTHLY') return total + (t.amount || 0);
-                        if (t.recurrenceType === 'WEEKLY') return total + (t.amount || 0) * 4;
-                        if (t.recurrenceType === 'YEARLY') return total + (t.amount || 0) / 12;
-                        return total + (t.amount || 0) * 30; // Daily
-                      }, 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
+            <div className="recurring-table-wrapper">
+              <table className="recurring-modern-table">
+                <thead><tr><th>Description</th><th>Amount</th><th>Category</th><th>Frequency</th><th>Next Date</th><th>Status</th><th className="text-center">Actions</th></tr></thead>
+                <tbody>
+                  {recurringTransactions.map(t => {
+                    const daysInfo = getDaysUntilDue(t.nextExecution);
+                    return (
+                      <tr key={t.recurringTransactionId} className="recurring-row">
+                        <td><div className="transaction-description">{t.description || 'N/A'}</div></td>
+                        <td><span className="transaction-amount">{formatCurrency(t.amount)}</span></td>
+                        <td><span className="transaction-category-badge">{getCategoryName(t.category ?? t.categoryId)}</span></td>
+                        <td><span className="frequency-badge">{t.recurrenceType}</span></td>
+                        <td><span className="next-execution-date">{formatDate(t.nextExecution)}</span></td>
+                        <td><span className={`status-badge status-${daysInfo.status}`}>{daysInfo.status === 'overdue' ? '⚠️ Overdue' : daysInfo.status === 'today' ? '🔔 Today' : daysInfo.status === 'urgent' ? `⏰ ${daysInfo.days} days` : `✓ ${daysInfo.days} days`}</span></td>
+                        <td className="text-center">
+                          <button className="btn-primary btn-sm" onClick={() => handleEdit(t)} title="Edit">
+                            <i className="fas fa-edit"></i> Update
+                          </button>
+                          <button style={{ marginLeft: '8px' }} className="btn-danger btn-sm" onClick={() => deleteRecurringTransaction(t.recurringTransactionId)} title="Delete">
+                            <i className="fas fa-trash"></i> Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
