@@ -2764,78 +2764,132 @@ main {
   font-size: 1.2em;
   color: #fff;
 }
-/* Profile Card Styles */
+/* 🌿 Profile Card Styles */
+
 .profile-card {
-  background: hsl(var(--card));
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-medium);
-  padding: 2.5em 3em 2em 3em;
-  margin: 2em auto;
-  max-width: 400px;
-  width: 100%;
-  color: hsl(var(--card-foreground));
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  width: 380px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  margin: 40px auto;
+  transition: all 0.3s ease;
+  font-family: 'Poppins', sans-serif;
 }
+
+.profile-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
 .profile-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5em;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
 }
+
+.profile-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.logout-btn {
+  background: #ff6b6b;
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: #e25555;
+}
+
+/* Profile Info */
 .profile-info {
   display: flex;
   flex-direction: column;
-  gap: 1em;
-  margin-bottom: 2em;
+  gap: 14px;
+  color: #444;
 }
+
 .profile-label {
-  font-weight: 700;
-  color: #21cbf3;
-  margin-right: 0.5em;
+  font-weight: 600;
+  color: #555;
+  display: inline-block;
+  width: 100px;
 }
+
 .profile-value {
-  color: #ffd700;
+  color: #222;
 }
+
+.enhanced-btn {
+  background: linear-gradient(135deg, #4e54c8, #8f94fb);
+  border: none;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-weight: 500;
+  transition: transform 0.2s ease, background 0.3s ease;
+}
+
+.enhanced-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #4348b2, #787cf9);
+}
+
+/* Edit Form */
 .profile-form {
   display: flex;
   flex-direction: column;
-  gap: 1em;
+  gap: 12px;
 }
+
 .profile-input {
-  background: white;
-  border: 1px solid #2196f3;
-  border-radius: 10px;
-  color: var(--text-main);
-  padding: 0.7em 1em;
-  font-size: 1em;
-  outline: none;
-  margin-bottom: 0.5em;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
 }
+
 .profile-input:focus {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgba(255,215,0,0.15);
+  outline: none;
+  border-color: #6c63ff;
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
 }
+
 .profile-btn-row {
   display: flex;
-  gap: 1em;
-  margin-top: 1em;
+  justify-content: space-between;
+  margin-top: 15px;
 }
-.logout-btn {
-  background: #ff5252;
-  color: #fff;
+
+.btn-delete {
+  background: #ccc;
   border: none;
-  border-radius: 8px;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 600;
+  color: #333;
+  padding: 10px 16px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.2s;
+  font-weight: 500;
+  transition: background 0.3s ease;
 }
-.logout-btn:hover {
-  background: #ff1744;
+
+.btn-delete:hover {
+  background: #b3b3b3;
 }
+
 /* --- Global & Reusable Component Styles --- */
 
 .enhanced-btn {
