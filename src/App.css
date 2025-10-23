@@ -2726,17 +2726,20 @@ main {
   box-shadow: 0 8px 24px rgba(33,150,243,0.22);
 }
 .signup-side-img {
-  background: #232a36;
-  border-radius: 18px;
-  box-shadow: 0 2px 12px rgba(33,150,243,0.10);
-  padding: 2em 2em;
-  min-width: 260px;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+    background: #0e59d9;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(33, 150, 243, 0.10);
+    padding: 2em 2em;
+    min-width: 260px;
+    max-width: 320px;
+    min-height: 450px;
+    display: flex
+;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
+
 .signup-side-img-content {
   display: flex;
   flex-direction: column;
@@ -2900,7 +2903,7 @@ main {
 }
 
 .signup-input:focus {
-  border-color: #ffd700; /* Prioritizing this focus color */
+  border-color: #107ed7; /* Prioritizing this focus color */
   box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.15);
 }
 
@@ -4927,6 +4930,16 @@ main {
 .forgot-password-link:hover {
   color: #4A86C7;
   text-decoration: underline;
+}
+.signup-input {
+    background: white;
+    color: black;
+    border: 1.5px solid #dee2e6;
+    border-radius: 12px;
+    padding: 1em;
+    font-size: 1em;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
 }
 
 .signup-prompt {
