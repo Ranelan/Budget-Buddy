@@ -138,10 +138,12 @@ function TransactionPage() {
         // Also include nested regularUser and top-level userId for compatibility with different backends
         const updatePayload = {
           ...basePayload,
-          id: formData.id,
+          transactionId: formData.id,
           categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
           userId: rawUserId ? Number(rawUserId) : undefined,
         };
+
+
 
         // Try multiple update endpoints to handle backend variations.
         // 1) PUT /api/transactions/{id}
@@ -158,11 +160,12 @@ function TransactionPage() {
         for (const ep of tryEndpoints) {
           try {
             console.debug(`Attempting ${ep.method} ${ep.url}`);
-            const res = await fetch(ep.url, {
-              method: ep.method,
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(updatePayload)
-            });
+            const res = await fetch(`${API_BASE}/update`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(updatePayload)
+});
+
             if (res.ok) {
               response = res; // mark success and break
               break;
