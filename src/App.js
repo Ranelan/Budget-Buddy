@@ -166,7 +166,7 @@ function Home() {
               and comprehensive expense tracking. Join thousands who trust Budget Buddy.
             </p>
             <div className="hero-cta-modern fade-in" style={{ animationDelay: '0.6s' }}>
-              <Link to="/user-signup" className="btn btn-primary btn-lg">
+              <Link to="/signup" className="btn btn-primary btn-lg">
                 <i className="fas fa-rocket"></i>
                 Start Free Today
               </Link>
@@ -361,9 +361,7 @@ function AppHeader() {
                 Admin
               </Link>
             )}
-            <Link to="/" className={`header-nav-link ${location.pathname === '/' ? 'active' : ''}`}>Home</Link>
-            <Link to="/about" className={`header-nav-link ${location.pathname === '/about' ? 'active' : ''}`}>About</Link>
-            <Link to="/contact" className={`header-nav-link ${location.pathname === '/contact' ? 'active' : ''}`}>Contact</Link>
+            {/* Public links removed from top-level header per design. They remain available in the profile dropdown for authenticated users. */}
           </nav>
         )}
 
@@ -384,6 +382,10 @@ function AppHeader() {
                 <i className="fas fa-chevron-down header-dropdown-icon"></i>
               </button>
               <div className="header-user-dropdown-menu">
+                <Link to="/" className="header-dropdown-item">
+                  <i className="fas fa-home"></i>
+                  Home
+                </Link>
                 <Link to="/user-dashboard/profile" className="header-dropdown-item">
                   <i className="fas fa-user"></i>
                   Profile
@@ -408,7 +410,7 @@ function AppHeader() {
               <Link to="/login" className="btn btn-ghost btn-sm">
                 Sign In
               </Link>
-              <Link to="/user-signup" className="btn btn-primary btn-sm">
+              <Link to="/signup" className="btn btn-primary btn-sm">
                 Get Started
               </Link>
             </>
@@ -461,7 +463,7 @@ function App() {
                   <AdminLogin />
                 </PublicRoute>
               } />
-              <Route path="/user-signup" element={
+              <Route path="/signup" element={
                 <PublicRoute>
                   <RegularUserSignUp />
                 </PublicRoute>
