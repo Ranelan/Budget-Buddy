@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
+import Modal from './components/Modal';
 
 const API_BASE = "http://localhost:8081/api/transactions";
 
@@ -63,13 +64,17 @@ function TransactionPage() {
           categoryId: t.categoryId || t.category?.categoryId,
         }));
         setTransactions(normalized);
+        // Notify interested listeners (e.g., BudgetPage) that transactions have updated
+        try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
       } else {
         setError("Could not load transactions.");
         setTransactions([]);
+        try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
       }
     } catch (err) {
       setError("A network error occurred. Please try again.");
       setTransactions([]);
+      try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
     } finally {
       setLoading(false);
     }
@@ -145,40 +150,34 @@ function TransactionPage() {
 
 
 
-        // Try multiple update endpoints to handle backend variations.
+        // Attempt only the supported update endpoints to avoid creating a new transaction
         // 1) PUT /api/transactions/{id}
         // 2) PUT /api/transactions/update
-        // 3) POST /api/transactions/create (fallback - server may treat create as upsert)
-
-        const tryEndpoints = [
-          { url: `${API_BASE}/${formData.id}`, method: 'PUT' },
-          { url: `${API_BASE}/update`, method: 'PUT' },
-          { url: `${API_BASE}/create`, method: 'POST' }
-        ];
-
         let lastError = null;
-        for (const ep of tryEndpoints) {
-          try {
-            console.debug(`Attempting ${ep.method} ${ep.url}`);
-            const res = await fetch(`${API_BASE}/update`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(updatePayload)
-});
+        try {
+          // Prefer the id-specific endpoint first
+          let res = await fetch(`${API_BASE}/${formData.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
+          });
 
-            if (res.ok) {
-              response = res; // mark success and break
-              break;
-            } else {
-              // capture last error text for helpful message
-              const txt = await res.text().catch(() => `HTTP ${res.status}`);
-              lastError = `Endpoint ${ep.url} returned ${res.status}: ${txt}`;
-              console.warn(lastError);
-            }
-          } catch (err) {
-            lastError = err.message || String(err);
-            console.warn(`Network error for ${ep.url}:`, err);
+          if (!res.ok) {
+            // Try the generic update endpoint as a second attempt
+            res = await fetch(`${API_BASE}/update`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatePayload)
+            });
           }
+
+          if (res && res.ok) {
+            response = res;
+          } else {
+            lastError = res ? await res.text().catch(() => `HTTP ${res.status}`) : 'No response';
+          }
+        } catch (err) {
+          lastError = err.message || String(err);
         }
 
         if (!response) {
@@ -210,6 +209,8 @@ function TransactionPage() {
         });
         setIsEditing(false);
         await fetchTransactions(); // Refresh the list
+        // Notify listeners (BudgetPage) that transactions changed so budgets can recompute immediately
+        try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
       } else {
         const errorText = await response.text().catch(() => `HTTP Status ${response.status}`);
         setError(`Failed to ${isEditing ? 'update' : 'create'} transaction: ${errorText}`);
@@ -217,6 +218,7 @@ function TransactionPage() {
     } catch (err) {
       console.error(`Error during form submission:`, err);
       setError(`A network error occurred while ${isEditing ? 'updating' : 'creating'} the transaction.`);
+      try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
     }
   };
 
@@ -238,11 +240,14 @@ function TransactionPage() {
       const response = await fetch(`${API_BASE}/delete/${id}`, { method: 'DELETE' });
       if (response.ok) {
         await fetchTransactions();
+        try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
       } else {
         setError('Failed to delete transaction');
+        try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
       }
     } catch (err) {
       setError("Error deleting transaction");
+      try { window.dispatchEvent(new Event('transactionsUpdated')); } catch (e) { /* ignore */ }
     }
   };
 
@@ -271,29 +276,27 @@ function TransactionPage() {
         {error && (<div style={{ background: '#fed7d7', color: '#c53030', padding: '1em', borderRadius: '8px', marginBottom: '1em', border: '1px solid #feb2b2' }}>{error}</div>)}
 
         {showForm && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '2.5em', width: '90%', maxWidth: '500px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)'}}>
-              <h2 style={{ color: '#2d3748', margin: '0 0 1.5em 0', fontSize: '1.5em', fontWeight: '600' }}>{isEditing ? "Update Transaction" : "Add New Transaction"}</h2>
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: 'flex', gap: '1em', marginBottom: '1em' }}>
-                  <input type="number" name="amount" placeholder="Amount (R)" value={formData.amount} onChange={handleInputChange} required min="0" step="0.01" style={{ flex: 1, padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', fontSize: '1em' }}/>
-                  <select name="type" value={formData.type} onChange={handleInputChange} style={{ padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', fontSize: '1em', minWidth: '120px' }}>
-                    <option value="Expense">Expense</option><option value="Income">Income</option>
-                  </select>
-                </div>
-                <input type="text" name="description" placeholder="Description" value={formData.description} onChange={handleInputChange} required style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '1em', fontSize: '1em' }} />
-                <select name="categoryId" value={formData.categoryId} onChange={handleInputChange} style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '1em', fontSize: '1em' }}>
-                  <option value="">Uncategorized</option>
-                  {categories.map((cat) => (<option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>))}
+          <Modal onClose={() => { setShowForm(false); setIsEditing(false); setFormData({ id: "", amount: "", description: "", categoryId: "", type: "Expense", date: new Date().toISOString().split("T")[0] }); }} ariaLabel={isEditing ? 'Update Transaction' : 'Add Transaction'}>
+            <h2 style={{ color: '#2d3748', margin: '0 0 1.5em 0', fontSize: '1.5em', fontWeight: '600' }}>{isEditing ? "Update Transaction" : "Add New Transaction"}</h2>
+            <form onSubmit={handleSubmit}>
+              <div style={{ display: 'flex', gap: '1em', marginBottom: '1em' }}>
+                <input type="number" name="amount" placeholder="Amount (R)" value={formData.amount} onChange={handleInputChange} required min="0" step="0.01" style={{ flex: 1, padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', fontSize: '1em' }}/>
+                <select name="type" value={formData.type} onChange={handleInputChange} style={{ padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', fontSize: '1em', minWidth: '120px' }}>
+                  <option value="Expense">Expense</option><option value="Income">Income</option>
                 </select>
-                <input type="date" name="date" value={formData.date} onChange={handleInputChange} required style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '2em', fontSize: '1em' }}/>
-                <div style={{ display: 'flex', gap: '1em', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={() => { setShowForm(false); setIsEditing(false); setFormData({ id: "", amount: "", description: "", categoryId: "", type: "Expense", date: new Date().toISOString().split("T")[0] }); }} style={{ padding: '0.75em 1.5em', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'transparent', color: '#718096', cursor: 'pointer', fontSize: '1em', fontWeight: '600' }}>Cancel</button>
-                  <button type="submit" style={{ padding: '0.75em 1.5em', borderRadius: '8px', border: 'none', background: '#4299e1', color: 'white', cursor: 'pointer', fontSize: '1em', fontWeight: '600' }}>{isEditing ? "Update Transaction" : "Add Transaction"}</button>
-                </div>
-              </form>
-            </div>
-          </div>
+              </div>
+              <input type="text" name="description" placeholder="Description" value={formData.description} onChange={handleInputChange} required style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '1em', fontSize: '1em' }} />
+              <select name="categoryId" value={formData.categoryId} onChange={handleInputChange} style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '1em', fontSize: '1em' }}>
+                <option value="">Uncategorized</option>
+                {categories.map((cat) => (<option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>))}
+              </select>
+              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required style={{ width: '100%', padding: '0.75em', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc', marginBottom: '2em', fontSize: '1em' }}/>
+              <div style={{ display: 'flex', gap: '1em', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => { setShowForm(false); setIsEditing(false); setFormData({ id: "", amount: "", description: "", categoryId: "", type: "Expense", date: new Date().toISOString().split("T")[0] }); }} style={{ padding: '0.75em 1.5em', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'transparent', color: '#718096', cursor: 'pointer', fontSize: '1em', fontWeight: '600' }}>Cancel</button>
+                <button type="submit" style={{ padding: '0.75em 1.5em', borderRadius: '8px', border: 'none', background: '#4299e1', color: 'white', cursor: 'pointer', fontSize: '1em', fontWeight: '600' }}>{isEditing ? "Update Transaction" : "Add Transaction"}</button>
+              </div>
+            </form>
+          </Modal>
         )}
 
         <div>
