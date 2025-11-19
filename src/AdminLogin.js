@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { pushToast } from './services/toastService';
 
 export default function AdminLogin({ onBack }) {
   const [form, setForm] = useState({
@@ -27,19 +28,19 @@ export default function AdminLogin({ onBack }) {
         })
       });
       if (response.ok) {
-    const data = await response.json();
-    alert("Login successful!\n" + JSON.stringify(data, null, 2));
-      console.log("Successful Login:", data);
-      localStorage.setItem("adminId", data.userID);
-      localStorage.setItem("adminName", data.userName);
+        const data = await response.json();
+        pushToast({ message: 'Login successful', type: 'success', duration: 3000 });
+        console.log("Successful Login:", data);
+        localStorage.setItem("adminId", data.userID);
+        localStorage.setItem("adminName", data.userName);
 
-      navigate("/admin-dashboard");
+        navigate("/admin-dashboard");
 
       } else {
-        alert("Login failed. Please check your credentials.");
+        pushToast({ message: 'Login failed. Please check your credentials.', type: 'error', duration: 4000 });
       }
     } catch (error) {
-      alert("Error: " + error);
+      pushToast({ message: `Error: ${String(error)}`, type: 'error', duration: 4000 });
     }
   };
 
