@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Toast from "../components/Toast";
 
 const API_BASE = "http://localhost:8081/api/budget";
+const TRAN_API = "http://localhost:8081/api/transactions";
 
 export default function BudgetPage() {
   // State management
@@ -15,6 +16,7 @@ export default function BudgetPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [transactions, setTransactions] = useState([]);
 
   // === STRICT REFRESH LOGIC ===
   // Reusable helper to discover the currently-logged-in regular user's id.
@@ -77,10 +79,106 @@ export default function BudgetPage() {
     }
   };
 
+  const fetchTransactions = async () => {
+    try {
+      const isAdmin = localStorage.getItem("isAdmin") === "true";
+      const currentUser = getCurrentUserId();
+      let url = "";
+
+      if (isAdmin) {
+        url = `${TRAN_API}/all`;
+      } else if (currentUser) {
+        url = `${TRAN_API}/byUser/${currentUser}`;
+      } else {
+        setTransactions([]);
+        return;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        setTransactions([]);
+        return;
+      }
+      const data = await res.json();
+      // Normalize transaction shape similar to TransactionPage
+      const normalized = (data || []).map((t) => ({
+        id: t.id || t.transactionId,
+        amount: Number(t.amount) || 0,
+        date: t.date,
+        type: t.type,
+        categoryId: t.categoryId || t.category?.categoryId,
+      }));
+      setTransactions(normalized);
+    } catch (err) {
+      console.warn('Failed to fetch transactions for budgets', err);
+      setTransactions([]);
+    }
+  };
+
   // Fetch all budgets on initial component load
   useEffect(() => {
     refreshBudgets();
+    fetchTransactions();
+
+    const onTxUpdated = () => fetchTransactions();
+    window.addEventListener('transactionsUpdated', onTxUpdated);
+    return () => window.removeEventListener('transactionsUpdated', onTxUpdated);
   }, []);
+
+  // Helpers to compute current spending per budget by matching transaction month/year
+  const monthNameOfDate = (isoDate) => {
+    try {
+      const d = new Date(isoDate);
+      return d.toLocaleString('default', { month: 'long' });
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // Normalize budget.month which may come as a number (1-12), short name (Dec) or full name (December)
+  const normalizeBudgetMonth = (m) => {
+    if (m === null || m === undefined) return '';
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    // numeric
+    if (typeof m === 'number') return monthNames[m - 1] || '';
+    const s = String(m).trim();
+    if (s === '') return '';
+    if (/^\d+$/.test(s)) {
+      const n = Number(s);
+      return monthNames[n - 1] || '';
+    }
+    // check first 3 letters
+    const key = s.slice(0,3).toLowerCase();
+    const map = { jan: 'January', feb: 'February', mar: 'March', apr: 'April', may: 'May', jun: 'June', jul: 'July', aug: 'August', sep: 'September', oct: 'October', nov: 'November', dec: 'December' };
+    if (map[key]) return map[key];
+    // fallback: capitalize first char
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const getCurrentForBudget = (budget) => {
+    if (!budget) return 0;
+    const bm = String(normalizeBudgetMonth(budget.month) || '').toLowerCase();
+    const by = String(budget.year || '').toLowerCase();
+    const sum = transactions.reduce((acc, t) => {
+      if (!t.date) return acc;
+      const tm = monthNameOfDate(t.date).toLowerCase();
+      const ty = String(new Date(t.date).getFullYear()).toLowerCase();
+      // consider only expenses as 'current' spending
+      if (tm === bm && ty === by && String(t.type).toLowerCase() === 'expense') {
+        return acc + (Number(t.amount) || 0);
+      }
+      return acc;
+    }, 0);
+    return sum;
+  };
+
+  // Derived totals for the summary strip (now computed from budgets + transactions)
+  const totalBudgets = budgets.length;
+  const totalLimit = budgets.reduce((sum, b) => sum + (Number(b.limitAmount) || 0), 0);
+  const totalCurrent = budgets.reduce((s, b) => s + getCurrentForBudget(b), 0);
+  const totalRemaining = Math.max(0, totalLimit - totalCurrent);
+
+  const formatCurrency = (n) => `R${Number(n || 0).toFixed(2)}`;
 
   // Show update modal and prefill form
   const openUpdateModal = () => {
@@ -193,7 +291,9 @@ export default function BudgetPage() {
       setToastType('success');
       setShowDeleteModal(false);
       setShowUpdateModal(false); 
-      refreshBudgets();
+      await refreshBudgets();
+      // ensure transactions are up to date after budget changes
+      await fetchTransactions();
     } else {
       setToastMessage('Failed to delete budget');
       setToastType('error');
@@ -201,7 +301,7 @@ export default function BudgetPage() {
   };
 
   return (
-    <div className="dashboard-content">
+    <>
       <Toast message={toastMessage} type={toastType} duration={3000} onClose={() => setToastMessage("")} />
       <div className="budget-main-card">
         <div className="goal-header">
@@ -212,7 +312,24 @@ export default function BudgetPage() {
         </div>
         {message && <div className="budget-message">{message}</div>}
 
-        <h2 className="budgets-title">Budget Overview</h2>
+  <h2 className="budgets-title">Budget Overview</h2>
+
+  <div className="summary-strip">
+          <div className="summary-card">
+            <div className="summary-title">Active Budgets</div>
+            <div className="summary-value">{totalBudgets}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-title">Total Limit</div>
+            <div className="summary-value">{formatCurrency(totalLimit)}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-title">Total Remaining</div>
+            <div className="summary-value">{formatCurrency(totalRemaining)}</div>
+          </div>
+        </div>
+
+        
 
         {/* Create Modal */}
         {showCreateModal && (
@@ -234,33 +351,32 @@ export default function BudgetPage() {
           </div>
         )}
 
-        <div className="goal-grid">
+        <div className="budget-grid">
           {budgets.length === 0 ? (
             <div className="no-budgets">No budgets found.</div>
           ) : (
             budgets.map(b => {
               const target = Number(b.limitAmount) || 0;
-              // Placeholder for current spending. You'd typically fetch this separately or have it in the budget object.
-              const current = 0; 
+              const current = getCurrentForBudget(b);
               const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
               const remaining = Math.max(0, (target - current).toFixed(2));
+              const normMonth = normalizeBudgetMonth(b.month);
               return (
-                <div key={b.budgetId} className="goal-card" onClick={() => setSelectedId(b.budgetId)}>
-                  <div className="goal-card-top">
-                    <div className="goal-title">{b.month} {b.year}</div>
-                    <div className="goal-amount">R{target}</div>
+                <div key={b.budgetId} className={`budget-card ${String(selectedId) === String(b.budgetId) ? 'active' : ''}`} data-month={normMonth || ''} data-year={b.year || ''} onClick={() => setSelectedId(b.budgetId)}>
+                  <div className="budget-card-top">
+                    <div className="budget-card-month-year">{normMonth} {b.year}</div>
+                    <div className="budget-card-limit-amount">{formatCurrency(target)}</div>
                   </div>
                   <div className="progress-track"><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
-                  <div className="goal-meta">
-                    <div className="remaining">R{remaining} remaining</div>
+                  <div className="budget-meta">
+                    <div className="remaining">{formatCurrency(remaining)} remaining</div>
                     <div className="percent-used">{percent}% used</div>
                   </div>
-                  {String(selectedId) === String(b.budgetId) && (
-                    <div className="goal-controls">
-                      <button className="btn-edit" onClick={(ev) => { ev.stopPropagation(); openUpdateModal(); }}>Update</button>
-                      <button className="btn-delete" onClick={(ev) => { ev.stopPropagation(); setSelectedId(b.budgetId); setShowDeleteModal(true); }}>Delete</button>
-                    </div>
-                  )}
+
+                  <div className="budget-card-actions">
+                    <button className="btn-edit" onClick={(ev) => { ev.stopPropagation(); openUpdateModal(); }}>Update</button>
+                    <button className="btn-delete" onClick={(ev) => { ev.stopPropagation(); setSelectedId(b.budgetId); setShowDeleteModal(true); }}>Delete</button>
+                  </div>
                 </div>
               );
             })
@@ -301,6 +417,6 @@ export default function BudgetPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
