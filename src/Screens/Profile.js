@@ -7,7 +7,8 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ userName: "", email: "" });
   const [error, setError] = useState("");
-  const userId = localStorage.getItem("regularUserID");
+  // Accept either key because other parts of the app use slightly different casing
+  const userId = localStorage.getItem("regularUserID") || localStorage.getItem("regularUserId");
 
   useEffect(() => {
     if (!userId) {
@@ -49,7 +50,9 @@ export default function Profile() {
   if (!user) return <div>Loading profile...</div>;
 
   const handleLogout = () => {
-  localStorage.removeItem("regularUserID");
+    // Clear both possible storage keys to avoid stale state
+    localStorage.removeItem("regularUserID");
+    localStorage.removeItem("regularUserId");
     localStorage.removeItem("regularUserName");
     window.location.href = "/";
   };
