@@ -337,9 +337,11 @@ function RecurringTransactionsSection() {
 
   const formatCurrency = (amount) => new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(amount || 0);
 
-  const getCategoryName = (categoryId) => {
-    if (categoryId == null) return 'Uncategorized';
-    const target = categories.find(c => String(c.categoryId) === String(categoryId));
+  const getCategoryName = (categoryOrId) => {
+    if (categoryOrId == null) return 'Uncategorized';
+    const id = typeof categoryOrId === 'object' ? (categoryOrId.categoryId ?? categoryOrId.id) : categoryOrId;
+    if (id == null) return 'Uncategorized';
+    const target = categories.find(c => String(c.categoryId) === String(id));
     return target?.name || 'Uncategorized';
   };
   
@@ -447,7 +449,7 @@ function RecurringTransactionsSection() {
                       <tr key={t.recurringTransactionId} className="recurring-row">
                         <td><div className="transaction-description">{t.description || 'N/A'}</div></td>
                         <td><span className="transaction-amount">{formatCurrency(t.amount)}</span></td>
-                        <td><span className="transaction-category-badge">{getCategoryName(t.category ?? t.categoryId)}</span></td>
+                        <td><span className="transaction-category-badge">{getCategoryName(t.category?.categoryId ?? t.categoryId)}</span></td>
                         <td><span className="frequency-badge">{t.recurrenceType}</span></td>
                         <td><span className="next-execution-date">{formatDate(t.nextExecution)}</span></td>
                         <td><span className={`status-badge status-${daysInfo.status}`}>{daysInfo.status === 'overdue' ? '⚠️ Overdue' : daysInfo.status === 'today' ? '🔔 Today' : daysInfo.status === 'urgent' ? `⏰ ${daysInfo.days} days` : `✓ ${daysInfo.days} days`}</span></td>
