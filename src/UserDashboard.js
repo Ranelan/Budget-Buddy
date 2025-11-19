@@ -108,9 +108,8 @@ export default function UserDashboard() {
 
   return (
     <div className="user-dashboard-wrapper">
-      <div className="clean-dashboard">
-        <div className="dashboard-content">
-          <Routes>
+      <div className="dashboard-content">
+        <Routes>
             <Route index element={<HomeContent />} />
             <Route path="home" element={<HomeContent />} />
             <Route path="budget" element={<BudgetPage />} />
@@ -120,8 +119,7 @@ export default function UserDashboard() {
             <Route path="category" element={<Category />} />
             <Route path="recurring" element={<RecurringTransaction />} />
             <Route path="*" element={<HomeContent />} />
-          </Routes>
-        </div>
+        </Routes>
       </div>
     </div>
   );
