@@ -4,6 +4,7 @@ import Toast from "../components/Toast"; // Assuming you have a Toast component
 
 export default function GoalPage() {
   const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ goalName: "", targetAmount: "", currentAmount: "", deadLine: "" });
   const [updateForm, setUpdateForm] = useState({ goalName: "", targetAmount: "", currentAmount: "", deadLine: "" });
   const [selectedId, setSelectedId] = useState("");
@@ -30,8 +31,13 @@ export default function GoalPage() {
 
   // Initial and subsequent data fetching is now handled by the secure service
   const fetchGoals = async () => {
-    const data = await goalService.fetchGoalsForCurrentUser();
-    setGoals(data || []);
+    setLoading(true);
+    try {
+      const data = await goalService.fetchGoalsForCurrentUser();
+      setGoals(data || []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -151,10 +157,18 @@ export default function GoalPage() {
   };
 
   return (
-    <div className="dashboard-content">
+    <>
       <Toast message={toastMessage} type={toastType} duration={3000} onClose={() => setToastMessage("")} />
 
-      {/* Summary Cards */}
+      {/* Loading state */}
+      {loading ? (
+        <div className="page-loader">
+          <div className="loader-spinner" />
+          <div className="loader-text">Loading goals...</div>
+        </div>
+      ) : (
+        /* Summary Cards */
+        <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
         <div className="goal-card" style={{ padding: '1rem 1.25rem' }}>
           <div style={{ fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))' }}>Active Goals</div>
@@ -170,7 +184,7 @@ export default function GoalPage() {
         </div>
       </div>
 
-      <div className="budget-main-card">
+        <div className="budget-main-card">
         <div className="goal-header">
           <h1 style={{ margin: 0 }}>Your Goals</h1>
           <button className="signup-btn signup-btn-blue add-goal-btn" onClick={() => setShowCreateModal(true)}>+ Add Goal</button>
@@ -217,7 +231,7 @@ export default function GoalPage() {
         </div>
       </div>
 
-      {/* Modals */}
+        {/* Modals */}
       {showDeleteModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-content modal-aligned" onClick={(e) => e.stopPropagation()}>
@@ -270,6 +284,8 @@ export default function GoalPage() {
               </div>
           </div>
       )}
-    </div>
+        </>
+      )}
+    </>
   );
 }

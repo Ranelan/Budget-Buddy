@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import "./App.css";
 import axios from "axios";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const API_URL = "http://localhost:8081/api/regularUser";
 
@@ -118,7 +118,7 @@ function RegularUserLogin() {
             
             <div className="login-links">
               <p className="signup-prompt">
-                Don't have an account? <a href="/user-signup" className="signup-link">Sign up</a>
+                Don't have an account? <Link to="/signup" className="signup-link">Sign up</Link>
               </p>
             </div>
           </form>
