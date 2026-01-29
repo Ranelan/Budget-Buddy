@@ -61,7 +61,7 @@ Budget Buddy is a comprehensive personal finance management web application desi
 
 ### 6. Recurring Transactions
 - **Automated Tracking**: Monitor subscription and recurring payments
-- **Recurrence Types**: Support for various recurrence patterns (monthly, weekly, etc.)
+- **Recurrence Patterns**: Support for various recurrence patterns (monthly, weekly, etc.)
 - **Next Execution Dates**: Track when recurring payments are due
 - **Category Integration**: Link recurring transactions to categories
 - **User Assignment**: Associate recurring transactions with specific users
@@ -93,7 +93,7 @@ Budget Buddy is a comprehensive personal finance management web application desi
   - Categories
   - Profile Settings
 
-### 10. UI/UX Components
+### 10. User Interface Components
 - **Modal Component**: Reusable modal dialogs for forms and confirmations
 - **Toast Notifications**: User feedback system for actions
 - **ToastContainer**: Centralized toast management
