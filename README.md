@@ -1,70 +1,133 @@
-# Getting Started with Create React App
+# Budget Buddy 💰
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, AI-powered personal finance management application built with React. Budget Buddy helps you take control of your financial life with smart budgeting tools, goal tracking, transaction management, and personalized AI-generated financial advice.
+
+## Features
+
+- **Budget Management** – Create and monitor monthly budgets with visual insights.
+- **Financial Goals** – Set savings targets and track your progress toward milestones.
+- **Transaction Tracking** – Log and review all income and expenses in one place.
+- **Recurring Payments** – Monitor subscriptions and automated transactions with countdown alerts.
+- **Expense Categories** – Organize spending with customizable categories.
+- **AI Financial Tips** – Get personalized financial advice powered by OpenAI, Google Gemini, Anthropic Claude, or a local AI model.
+- **Analytics Dashboard** – Visualize spending patterns with interactive charts (admin view).
+- **User & Admin Roles** – Separate dashboards for regular users and administrators.
+- **Light / Dark Theme** – Toggle between color modes for comfortable viewing.
+- **Profile Management** – Update your account details from within the app.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, React Router DOM v6 |
+| Charts | Recharts |
+| HTTP Client | Axios |
+| Styling | Custom CSS with CSS variables |
+| Backend API | Spring Boot (runs on `http://localhost:8081`) |
+| AI Integration | OpenAI GPT, Google Gemini, Anthropic Claude, or local models |
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) v16 or higher
+- npm v8 or higher
+- The Budget Buddy backend API running on port `8081`
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/Ranelan/Budget-Buddy.git
+   cd Budget-Buddy
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables** *(optional – required only for AI tips)*
+
+   Create a `.env` file in the project root:
+
+   ```env
+   # OpenAI (recommended)
+   REACT_APP_OPENAI_API_KEY=your_openai_api_key_here
+   REACT_APP_OPENAI_MODEL=gpt-3.5-turbo
+
+   # Google Gemini
+   REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+
+   # Anthropic Claude
+   REACT_APP_CLAUDE_API_KEY=your_claude_api_key_here
+
+   # Local AI (e.g. Ollama)
+   REACT_APP_LOCAL_AI_URL=http://localhost:11434
+   REACT_APP_LOCAL_AI_MODEL=llama2
+   ```
+
+   If no API key is provided, the app falls back to a set of static financial tips automatically.
+
+4. **Start the development server**
+
+   ```bash
+   npm start
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Available Scripts
 
-In the project directory, you can run:
+| Script | Description |
+|--------|-------------|
+| `npm start` | Run the app in development mode with hot reload |
+| `npm test` | Launch the test runner in interactive watch mode |
+| `npm run build` | Create an optimized production build in the `build/` folder |
+| `npm run eject` | Eject from Create React App (irreversible) |
 
-### `npm start`
+## Project Structure
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+src/
+├── components/          # Reusable UI components (AI tips, modals, toasts)
+├── hooks/               # Custom React hooks
+├── services/            # API and AI service integrations
+├── Screens/             # Full-page views (Budget, Goals, Profile)
+├── App.js               # Root component, routing, and auth context
+├── AdminDashboard.js    # Admin management & analytics
+├── UserDashboard.js     # User home & nested routes
+├── TransactionPage.js   # Income & expense tracking
+├── RecurringTransaction.js  # Recurring payment management
+├── Category.js          # Expense category management
+└── ...
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## User Roles
 
-### `npm test`
+| Role | Access |
+|------|--------|
+| **Regular User** | Budget, Goals, Transactions, Recurring Payments, Categories, Profile |
+| **Admin** | User management, Category management, Recurring transactions, Analytics |
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Sign up as a regular user at `/signup`, or use the admin signup flow to create an admin account.
 
-### `npm run build`
+## AI Financial Tips
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Budget Buddy includes an AI-powered tips engine that generates personalized advice based on your spending patterns, budget allocations, and financial goals. Tips are cached for one hour to minimize API usage and can be refreshed manually from the dashboard.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+For detailed AI configuration options, see [AI_SETUP.md](./AI_SETUP.md).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Contributing
 
-### `npm run eject`
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m "Add your feature"`
+4. Push the branch: `git push origin feature/your-feature-name`
+5. Open a Pull Request.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## License
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is private. All rights reserved.
