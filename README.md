@@ -12,7 +12,6 @@ A modern, AI-powered personal finance management application built with React. B
 - **AI Financial Tips** – Get personalized financial advice powered by OpenAI, Google Gemini, Anthropic Claude, or a local AI model.
 - **Analytics Dashboard** – Visualize spending patterns with interactive charts (admin view).
 - **User & Admin Roles** – Separate dashboards for regular users and administrators.
-- **Light / Dark Theme** – Toggle between color modes for comfortable viewing.
 - **Profile Management** – Update your account details from within the app.
 
 ## Tech Stack
