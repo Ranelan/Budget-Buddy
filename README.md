@@ -68,7 +68,7 @@ A modern, AI-powered personal finance management application built with React. B
    REACT_APP_LOCAL_AI_MODEL=llama2
    ```
 
-   If no API key is provided, the app falls back to a set of static financial tips automatically.
+   If no API key is provided, the app automatically falls back to a set of static financial tips.
 
 4. **Start the development server**
 
