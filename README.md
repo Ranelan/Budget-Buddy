@@ -23,7 +23,7 @@ A modern, AI-powered personal finance management application built with React. B
 | HTTP Client | Axios |
 | Styling | Custom CSS with CSS variables |
 | Backend API | Spring Boot (runs on `http://localhost:8081`) |
-| AI Integration | OpenAI GPT, Google Gemini, Anthropic Claude, or local models |
+| AI Integration | OpenAI GPT, Google Gemini, or local models |
 
 ## Getting Started
 
