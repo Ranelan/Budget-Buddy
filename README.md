@@ -1,6 +1,6 @@
 # Budget Buddy 💰
 
-A modern, AI-powered personal finance management application built with React. Budget Buddy helps you take control of your financial life with smart budgeting tools, goal tracking, transaction management, and personalized AI-generated financial advice.
+An AI-powered personal finance management web application built with React. Budget Buddy helps you take control of your financial life with smart budgeting tools, goal tracking, transaction management, and personalized AI-generated financial advice.
 
 ## Features
 
