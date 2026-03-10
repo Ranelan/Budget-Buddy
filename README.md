@@ -53,7 +53,7 @@ An AI-powered personal finance management web application built with React. Budg
    Create a `.env` file in the project root:
 
    ```env
-   # OpenAI (recommended)
+   # OpenAI 
    REACT_APP_OPENAI_API_KEY=your_openai_api_key_here
    REACT_APP_OPENAI_MODEL=gpt-3.5-turbo
 
